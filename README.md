@@ -93,12 +93,16 @@ The feed IDs live in `api/_lib/cnbc.js` (`FEEDS`) and are mirrored in
 
 ## Watching CNBC live
 
-The sidebar links to CNBC's own live stream, its YouTube channel, and its
-"where to watch" page. I did not wire up the DaddyLive/`dlstreams.st` embed
-from the brief — that service rebroadcasts CNBC's feed without a licence, and
-embedding it would put unlicensed streams on your dad's screen and on your
-Vercel account. The official links are in `public/index.html` under
-`.live__links` if you want to change them.
+The sidebar embeds CNBC's official YouTube live stream, with links to CNBC's
+own live TV page and its "where to watch" page underneath. YouTube's
+`live_stream` embed takes a channel id rather than an `@handle`, so the id
+lives in one constant — `LIVE_CHANNEL_ID` at the top of `public/app.js`.
+Change it there to point the player somewhere else. When the channel is not
+streaming, the player is blank and the links below it still work.
+
+This app deliberately does not embed `dlstreams.st` (DaddyLive) or similar
+services. They rebroadcast CNBC's feed without a licence, which is a
+liability on whatever account hosts the page.
 
 ## Layout
 

@@ -69,7 +69,20 @@
 
     <div class="live">
       <h3 class="live__title">Watch CNBC live</h3>
-      <p class="live__note">Official streams, free where CNBC offers them.</p>
+
+      <div class="live__player">
+        <iframe id="live-frame"
+                title="CNBC live stream"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                loading="lazy"></iframe>
+      </div>
+
+      <p class="live__note">
+        The player shows CNBC's stream when the channel is live. If it is blank,
+        CNBC is off air on that channel right now — use a link below.
+      </p>
+
       <ul class="live__links">
         <li><a href="https://www.cnbc.com/live-tv/" target="_blank" rel="noopener noreferrer">CNBC live TV</a></li>
         <li><a href="https://www.youtube.com/@CNBCtelevision/live" target="_blank" rel="noopener noreferrer">CNBC Television on YouTube</a></li>

@@ -25,6 +25,11 @@
     'EUR=': 'Euro'
   };
 
+  // CNBC's own YouTube channel, which is where CNBC publishes its free live
+  // stream. YouTube's live_stream embed takes a channel id, not an @handle.
+  // To point the player at a different channel, change this one value.
+  var LIVE_CHANNEL_ID = 'UCrp_UI8XtuYfpiqluWLD7Lw';   // CNBC Television
+
   var DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'JPM', 'JNJ', 'KO'];
   var SYMBOL_PATTERN = /^[A-Z0-9.\-=@^:&]{1,16}$/;
 
@@ -447,9 +452,19 @@
   /* start                                                             */
   /* ---------------------------------------------------------------- */
 
+  /* The stream loads only once the page is running, so a slow YouTube response
+   * never holds up the prices and headlines. */
+  function initLivePlayer() {
+    var frame = $('live-frame');
+    if (!frame || !LIVE_CHANNEL_ID) return;
+    frame.src = 'https://www.youtube.com/embed/live_stream?channel=' +
+      encodeURIComponent(LIVE_CHANNEL_ID);
+  }
+
   function start() {
     initAppearance();
     initAdder();
+    initLivePlayer();
 
     $('clock').textContent = clockText();
     setInterval(function () { $('clock').textContent = clockText(); }, 30000);

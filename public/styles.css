@@ -392,7 +392,17 @@ a { color: inherit; }
 
 .live { margin-top: 1.5rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
 .live__title { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-.live__note { margin: 0.35rem 0 0.6rem; font-size: 0.85rem; color: var(--ink-soft); }
+.live__note { margin: 0.6rem 0; font-size: 0.85rem; line-height: 1.45; color: var(--ink-soft); }
+
+.live__player {
+  margin-top: 0.75rem;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.live__player iframe { display: block; width: 100%; height: 100%; border: 0; }
 .live__links { list-style: none; margin: 0; padding: 0; }
 .live__links li + li { margin-top: 0.15rem; }
 .live__links a {
