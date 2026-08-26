@@ -89,14 +89,22 @@ await fs.writeFile(path.join(outDir, 'Start on Mac.command'), macLauncher, { mod
 await fs.writeFile(path.join(outDir, 'Start on Windows.bat'), winLauncher);
 await fs.writeFile(path.join(outDir, 'READ ME FIRST.txt'), readme);
 
-const zipPath = path.join(outDir, 'CNBC-App.zip');
-await fs.rm(zipPath, { force: true });
-await run('zip', ['-j', '-q', zipPath,
+const bundled = [
   appPath,
   path.join(outDir, 'Start on Mac.command'),
   path.join(outDir, 'Start on Windows.bat'),
   path.join(outDir, 'READ ME FIRST.txt'),
-]);
+];
+
+/* Zip archives record each file's mtime, so an unchanged rebuild would still
+ * produce different bytes and show up as a git change. Pin the timestamps so
+ * the same sources always yield the same archive. */
+const EPOCH = new Date('2024-01-01T00:00:00Z');
+await Promise.all(bundled.map((file) => fs.utimes(file, EPOCH, EPOCH)));
+
+const zipPath = path.join(outDir, 'CNBC-App.zip');
+await fs.rm(zipPath, { force: true });
+await run('zip', ['-j', '-q', '-X', zipPath, ...bundled]);
 
 const { size } = await fs.stat(zipPath);
 console.log(`dist/CNBC-App.py    ${(await fs.stat(appPath)).size} bytes`);
