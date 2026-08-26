@@ -1,0 +1,34 @@
+CNBC Daily
+==========
+
+A simple dashboard of CNBC headlines and stock prices.
+
+To start it
+-----------
+
+Mac:      double-click  "Start on Mac.command"
+Windows:  double-click  "Start on Windows.bat"
+
+Either one opens the dashboard in your web browser. Leave the small black
+window open while you use it - closing that window stops the dashboard.
+
+If double-clicking does nothing, open a terminal (Mac) or Command Prompt
+(Windows) in this folder and run:
+
+    python3 CNBC-App.py
+
+You need Python 3.7 or newer. Macs usually have it. On Windows, install it
+free from https://www.python.org/downloads/ and tick "Add Python to PATH"
+during setup.
+
+Using it
+--------
+
+  - The scrolling bar at the top shows the major markets.
+  - "My stocks" is your own list. Type a symbol and press Add, or press the
+    x to remove one. Your list is remembered on this computer.
+  - The A A A buttons make all the text bigger.
+  - "Dark" switches to a dark screen for night reading.
+
+Headlines and prices come from CNBC's own public feeds. Prices may be
+delayed. Not affiliated with or endorsed by CNBC.

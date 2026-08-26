@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CNBC Daily — markets and news</title>
+<meta name="description" content="A simple, readable dashboard for CNBC headlines and stock prices.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="masthead__identity">
+    <span class="wordmark">CNBC</span>
+    <span class="wordmark wordmark--sub">Daily</span>
+  </div>
+
+  <p class="masthead__status">
+    <span id="clock">&nbsp;</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span id="status">Loading</span>
+  </p>
+
+  <div class="masthead__tools">
+    <div class="sizer" role="group" aria-label="Text size">
+      <button type="button" data-size="1" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--sm">A</span><span class="u-sr">Normal text</span></button>
+      <button type="button" data-size="2" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--md">A</span><span class="u-sr">Large text</span></button>
+      <button type="button" data-size="3" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--lg">A</span><span class="u-sr">Largest text</span></button>
+    </div>
+    <button type="button" id="theme-btn" class="tool-btn" aria-pressed="false">
+      <span id="theme-label">Dark</span>
+    </button>
+    <button type="button" id="refresh-btn" class="tool-btn tool-btn--go">Refresh</button>
+  </div>
+</header>
+
+<div class="tape" id="tape" tabindex="0" aria-label="Market summary ticker">
+  <div class="tape__track" id="tape-track">
+    <div class="tape__group" id="tape-group"><span class="tape__loading">Loading market data…</span></div>
+  </div>
+</div>
+
+<main class="layout" id="main">
+
+  <section class="panel" aria-labelledby="watchlist-heading">
+    <div class="panel__head">
+      <h2 class="panel__title" id="watchlist-heading">My stocks</h2>
+      <span class="panel__note" id="watchlist-note"></span>
+    </div>
+
+    <ul class="quotes" id="watchlist">
+      <li class="empty">Loading prices…</li>
+    </ul>
+
+    <form class="adder" id="add-form">
+      <label class="u-sr" for="add-input">Add a stock symbol</label>
+      <input id="add-input" name="symbol" type="text" placeholder="Add a symbol, e.g. TSLA"
+             autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16">
+      <button type="submit" class="tool-btn tool-btn--go">Add</button>
+    </form>
+    <p class="adder__msg" id="add-msg" role="status"></p>
+
+    <div class="live">
+      <h3 class="live__title">Watch CNBC live</h3>
+      <p class="live__note">Official streams, free where CNBC offers them.</p>
+      <ul class="live__links">
+        <li><a href="https://www.cnbc.com/live-tv/" target="_blank" rel="noopener noreferrer">CNBC live TV</a></li>
+        <li><a href="https://www.youtube.com/@CNBCtelevision/live" target="_blank" rel="noopener noreferrer">CNBC Television on YouTube</a></li>
+        <li><a href="https://www.cnbc.com/tv/" target="_blank" rel="noopener noreferrer">Where to watch CNBC</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel panel--news" aria-labelledby="news-heading">
+    <div class="panel__head">
+      <h2 class="panel__title" id="news-heading">News</h2>
+      <span class="panel__note" id="news-note"></span>
+    </div>
+
+    <nav class="chips" id="categories" aria-label="News categories"></nav>
+
+    <ol class="stories" id="news">
+      <li class="empty">Loading headlines…</li>
+    </ol>
+  </section>
+
+</main>
+
+<footer class="colophon">
+  <p>Headlines and prices come from CNBC's public feeds. Not affiliated with or endorsed by CNBC. Prices may be delayed — do not trade on them.</p>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

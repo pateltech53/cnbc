@@ -1,0 +1,12 @@
+{
+  "name": "cnbc-daily",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A simple CNBC news and stock dashboard.",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs",
+    "check": "node tools/check-endpoints.mjs",
+    "build:standalone": "node tools/build-standalone.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
