@@ -93,16 +93,20 @@ The feed IDs live in `api/_lib/cnbc.js` (`FEEDS`) and are mirrored in
 
 ## Watching CNBC live
 
-The sidebar embeds CNBC's official YouTube live stream, with links to CNBC's
-own live TV page and its "where to watch" page underneath. YouTube's
-`live_stream` embed takes a channel id rather than an `@handle`, so the id
-lives in one constant — `LIVE_CHANNEL_ID` at the top of `public/app.js`.
-Change it there to point the player somewhere else. When the channel is not
-streaming, the player is blank and the links below it still work.
+The sidebar embeds a live player, with links to CNBC's own live TV page and
+its "where to watch" page underneath.
 
-This app deliberately does not embed `dlstreams.st` (DaddyLive) or similar
-services. They rebroadcast CNBC's feed without a licence, which is a
-liability on whatever account hosts the page.
+Out of the box it points at CNBC's official YouTube stream. To show something
+else, open **Settings** (the gear in the header) and paste an address into
+**Live stream**. It is saved in the browser on that device, so each person can
+set their own; "Use the default" clears it. Only `https://` and `http://`
+addresses are accepted — anything else is rejected rather than handed to the
+iframe. Many sites send `X-Frame-Options` or a `frame-ancestors` policy that
+forbids embedding; those will show a blank panel however valid the address is.
+
+The built-in default lives in one constant, `LIVE_CHANNEL_ID` at the top of
+`public/app.js`. YouTube's `live_stream` embed takes a channel id rather than
+an `@handle`, so that is what the constant holds.
 
 ## Layout
 

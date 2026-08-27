@@ -129,7 +129,16 @@ a { color: inherit; }
 }
 .masthead__status .dot { margin: 0 0.4rem; color: var(--ink-faint); }
 
-.masthead__tools { display: flex; align-items: center; gap: 0.5rem; }
+/* Wraps rather than overflowing: at 320px the four controls do not fit on
+ * one line, and an unwrapped row pushed the whole page sideways. */
+.masthead__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
 
 .tool-btn {
   min-height: 44px;
@@ -147,6 +156,22 @@ a { color: inherit; }
 .tool-btn--go { background: var(--brand); border-color: var(--brand); color: #fff; }
 .tool-btn--go:hover { filter: brightness(1.08); }
 .tool-btn[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+
+.tool-btn--icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+.tool-btn--icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* text size control — the glyph itself shows the size it sets */
 .sizer { display: flex; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
@@ -482,6 +507,90 @@ a { color: inherit; }
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------- */
+/* settings dialog                                                   */
+/* ---------------------------------------------------------------- */
+
+.sheet {
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.sheet::backdrop { background: rgba(6, 11, 20, 0.55); }
+
+.sheet__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.sheet__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sheet__close {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  font-size: 1.35rem; line-height: 1;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sheet__close:hover { color: var(--ink); border-color: var(--rule); }
+
+.sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.field { margin-top: 1.1rem; }
+
+.field__label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.field__help {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  font-family: var(--font-text);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.field__msg {
+  min-height: 1.2rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.field__msg[data-tone="error"] { color: var(--down); }
 
 /* ---------------------------------------------------------------- */
 /* footer                                                            */

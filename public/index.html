@@ -37,6 +37,13 @@
     <button type="button" id="theme-btn" class="tool-btn" aria-pressed="false">
       <span id="theme-label">Dark</span>
     </button>
+    <button type="button" id="settings-btn" class="tool-btn tool-btn--icon" title="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+      </svg>
+      <span class="u-sr">Settings</span>
+    </button>
     <button type="button" id="refresh-btn" class="tool-btn tool-btn--go">Refresh</button>
   </div>
 </header>
@@ -78,7 +85,7 @@
                 loading="lazy"></iframe>
       </div>
 
-      <p class="live__note">
+      <p class="live__note" id="live-note">
         The player shows CNBC's stream when the channel is live. If it is blank,
         CNBC is off air on that channel right now — use a link below.
       </p>
@@ -109,6 +116,30 @@
 <footer class="colophon">
   <p>Headlines and prices come from CNBC's public feeds. Not affiliated with or endorsed by CNBC. Prices may be delayed — do not trade on them.</p>
 </footer>
+
+<dialog id="settings" class="sheet" aria-labelledby="settings-title">
+  <div class="sheet__head">
+    <h2 class="sheet__title" id="settings-title">Settings</h2>
+    <button type="button" id="settings-close" class="sheet__close" aria-label="Close settings">&times;</button>
+  </div>
+
+  <div class="field">
+    <label class="field__label" for="stream-url">Live stream</label>
+    <p class="field__help">
+      The address of a page or video to show in the “Watch CNBC live” panel.
+      Leave it empty to use CNBC's own YouTube stream. Some sites refuse to be
+      embedded — if the panel stays blank after saving, that site is one of them.
+    </p>
+    <input id="stream-url" type="url" inputmode="url" spellcheck="false"
+           autocomplete="off" placeholder="https://">
+    <p class="field__msg" id="stream-msg" role="status"></p>
+  </div>
+
+  <div class="sheet__actions">
+    <button type="button" id="stream-reset" class="tool-btn">Use the default</button>
+    <button type="button" id="settings-save" class="tool-btn tool-btn--go">Save</button>
+  </div>
+</dialog>
 
 <script src="/app.js"></script>
 </body>

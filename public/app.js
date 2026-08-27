@@ -40,7 +40,8 @@
     watchlist: 'cnbcdaily.watchlist',
     theme: 'cnbcdaily.theme',
     size: 'cnbcdaily.size',
-    category: 'cnbcdaily.category'
+    category: 'cnbcdaily.category',
+    stream: 'cnbcdaily.stream'
   };
 
   /* ---------------------------------------------------------------- */
@@ -452,18 +453,112 @@
   /* start                                                             */
   /* ---------------------------------------------------------------- */
 
-  /* The stream loads only once the page is running, so a slow YouTube response
-   * never holds up the prices and headlines. */
+  /* ---------------------------------------------------------------- */
+  /* live player and its setting                                       */
+  /* ---------------------------------------------------------------- */
+
+  function defaultStreamUrl() {
+    return 'https://www.youtube.com/embed/live_stream?channel=' +
+      encodeURIComponent(LIVE_CHANNEL_ID);
+  }
+
+  /* Only http(s) addresses reach the iframe. Anything else — javascript:,
+   * data:, a bare word someone typed — is rejected rather than assigned. */
+  function normalizeStreamUrl(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return { ok: true, url: '' };            // empty means "use the default"
+    var parsed;
+    try {
+      parsed = new URL(raw);
+    } catch (err) {
+      return { ok: false, reason: 'That is not a complete web address. It should start with https://' };
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return { ok: false, reason: 'Only https:// and http:// addresses can be shown here.' };
+    }
+    return { ok: true, url: parsed.href };
+  }
+
+  function storedStreamUrl() {
+    var saved = normalizeStreamUrl(readStore(STORE.stream, ''));
+    return saved.ok ? saved.url : '';
+  }
+
+  /* The stream loads only once the page is running, so a slow response from
+   * whatever is embedded never holds up the prices and headlines. */
   function initLivePlayer() {
     var frame = $('live-frame');
-    if (!frame || !LIVE_CHANNEL_ID) return;
-    frame.src = 'https://www.youtube.com/embed/live_stream?channel=' +
-      encodeURIComponent(LIVE_CHANNEL_ID);
+    if (!frame) return;
+
+    var custom = storedStreamUrl();
+    var source = custom || (LIVE_CHANNEL_ID ? defaultStreamUrl() : '');
+    if (!source) return;
+
+    frame.src = source;
+
+    var note = $('live-note');
+    if (note && custom) {
+      note.textContent = 'Showing the stream set in Settings. If the panel is ' +
+        'blank, that site does not allow being embedded.';
+    }
+  }
+
+  function initSettings() {
+    var dialog = $('settings');
+    var openBtn = $('settings-btn');
+    if (!dialog || !openBtn || typeof dialog.showModal !== 'function') return;
+
+    var input = $('stream-url');
+    var message = $('stream-msg');
+
+    function say(text, tone) {
+      message.textContent = text || '';
+      if (tone) message.setAttribute('data-tone', tone);
+      else message.removeAttribute('data-tone');
+    }
+
+    openBtn.addEventListener('click', function () {
+      input.value = storedStreamUrl();
+      say('');
+      dialog.showModal();
+      input.focus();
+    });
+
+    function close() {
+      dialog.close();
+      openBtn.focus();
+    }
+
+    $('settings-close').addEventListener('click', close);
+
+    $('settings-save').addEventListener('click', function () {
+      var result = normalizeStreamUrl(input.value);
+      if (!result.ok) {
+        say(result.reason, 'error');
+        return;
+      }
+      writeStore(STORE.stream, result.url);
+      initLivePlayer();
+      say(result.url ? 'Saved. The panel now shows your stream.' : 'Saved. Back to the default stream.');
+    });
+
+    $('stream-reset').addEventListener('click', function () {
+      input.value = '';
+      writeStore(STORE.stream, '');
+      var note = $('live-note');
+      if (note) {
+        note.textContent = "The player shows CNBC's stream when the channel is live. " +
+          'If it is blank, CNBC is off air on that channel right now — use a link below.';
+      }
+      initLivePlayer();
+      say('Back to the default stream.');
+    });
   }
 
   function start() {
     initAppearance();
     initAdder();
+    initSettings();
     initLivePlayer();
 
     $('clock').textContent = clockText();
