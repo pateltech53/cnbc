@@ -4,59 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CNBC Daily — markets and news</title>
-<meta name="description" content="A simple, readable dashboard for CNBC headlines and stock prices.">
+<meta name="description" content="A large-type CNBC markets and news dashboard, built for a dedicated iPad.">
 <meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
 <a class="skip-link" href="#main">Skip to content</a>
 
+<!-- ── greeting ──────────────────────────────────────────────────── -->
 <header class="masthead">
-  <div class="masthead__identity">
-    <span class="wordmark">CNBC</span>
-    <span class="wordmark wordmark--sub">Daily</span>
+  <div class="masthead__greeting">
+    <h1 class="greeting">Welcome, <span id="greeting-name">Dad</span></h1>
+    <p class="masthead__when"><span id="clock">&nbsp;</span></p>
   </div>
 
-  <p class="masthead__status">
-    <span id="clock">&nbsp;</span>
-    <span class="dot" aria-hidden="true">·</span>
-    <span id="status">Loading</span>
-  </p>
-
   <div class="masthead__tools">
-    <div class="sizer" role="group" aria-label="Text size">
-      <button type="button" data-size="1" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--sm">A</span><span class="u-sr">Normal text</span></button>
-      <button type="button" data-size="2" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--md">A</span><span class="u-sr">Large text</span></button>
-      <button type="button" data-size="3" class="sizer__btn" aria-pressed="false"><span class="sizer__a sizer__a--lg">A</span><span class="u-sr">Largest text</span></button>
-    </div>
-    <button type="button" id="theme-btn" class="tool-btn" aria-pressed="false">
-      <span id="theme-label">Dark</span>
-    </button>
-    <button type="button" id="settings-btn" class="tool-btn tool-btn--icon" title="Settings">
+    <p class="masthead__status" id="status">Loading</p>
+    <button type="button" id="refresh-btn" class="btn btn--primary">Refresh</button>
+    <button type="button" id="settings-btn" class="btn btn--icon" title="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
       </svg>
       <span class="u-sr">Settings</span>
     </button>
-    <button type="button" id="refresh-btn" class="tool-btn tool-btn--go">Refresh</button>
   </div>
 </header>
 
+<!-- ── day progress toward downtime ──────────────────────────────── -->
+<section class="daybar" aria-labelledby="daybar-heading">
+  <h2 class="u-sr" id="daybar-heading">Progress through the day</h2>
+
+  <div class="daybar__rail">
+    <span class="daybar__marker daybar__marker--dawn" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.6"/><g class="rays"><path d="M12 2.4v2.6M12 19v2.6M2.4 12h2.6M19 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></g></svg>
+    </span>
+
+    <div class="daybar__track" id="sun-track">
+      <div class="daybar__fill" id="sun-fill"></div>
+      <div class="daybar__orb" id="sun-orb"><span class="daybar__orb-core"></span></div>
+    </div>
+
+    <span class="daybar__marker daybar__marker--dusk" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/></svg>
+    </span>
+  </div>
+
+  <p class="daybar__readout">
+    <span class="daybar__remaining" id="sun-remaining">&nbsp;</span>
+    <span class="daybar__target" id="sun-target"></span>
+  </p>
+</section>
+
+<!-- ── market ticker ─────────────────────────────────────────────── -->
 <div class="tape" id="tape" tabindex="0" aria-label="Market summary ticker">
   <div class="tape__track" id="tape-track">
-    <div class="tape__group" id="tape-group"><span class="tape__loading">Loading market data…</span></div>
+    <div class="tape__group"><span class="tape__loading">Loading market data…</span></div>
   </div>
 </div>
 
+<!-- ── dashboard ─────────────────────────────────────────────────── -->
 <main class="layout" id="main">
 
-  <section class="panel" aria-labelledby="watchlist-heading">
+  <section class="panel panel--stocks" aria-labelledby="watchlist-heading">
     <div class="panel__head">
       <h2 class="panel__title" id="watchlist-heading">My stocks</h2>
       <span class="panel__note" id="watchlist-note"></span>
@@ -68,21 +86,31 @@
 
     <form class="adder" id="add-form">
       <label class="u-sr" for="add-input">Add a stock symbol</label>
-      <input id="add-input" name="symbol" type="text" placeholder="Add a symbol, e.g. TSLA"
+      <input id="add-input" name="symbol" type="text" placeholder="Add a symbol"
              autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16">
-      <button type="submit" class="tool-btn tool-btn--go">Add</button>
+      <button type="submit" class="btn btn--primary">Add</button>
     </form>
     <p class="adder__msg" id="add-msg" role="status"></p>
+  </section>
 
-    <div class="live">
-      <h3 class="live__title">Watch CNBC live</h3>
+  <div class="stack">
 
-      <div class="live__player">
-        <iframe id="live-frame"
-                title="CNBC live stream"
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                loading="lazy"></iframe>
+    <section class="panel panel--live" aria-labelledby="live-heading">
+      <div class="panel__head">
+        <h2 class="panel__title" id="live-heading">CNBC live</h2>
+        <span class="panel__note" id="live-note-tag"></span>
+      </div>
+
+      <!-- viewport → crop layer → iframe. The crop layer is positioned and the
+           iframe scaled, both driven by the crop editor in Settings. -->
+      <div class="live__player" id="live-player">
+        <div class="live__crop" id="live-crop">
+          <iframe id="live-frame"
+                  title="CNBC live stream"
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                  loading="lazy"></iframe>
+        </div>
       </div>
 
       <p class="live__note" id="live-note">
@@ -95,51 +123,172 @@
         <li><a href="https://www.youtube.com/@CNBCtelevision/live" target="_blank" rel="noopener noreferrer">CNBC Television on YouTube</a></li>
         <li><a href="https://www.cnbc.com/tv/" target="_blank" rel="noopener noreferrer">Where to watch CNBC</a></li>
       </ul>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel panel--news" aria-labelledby="news-heading">
-    <div class="panel__head">
-      <h2 class="panel__title" id="news-heading">News</h2>
-      <span class="panel__note" id="news-note"></span>
-    </div>
+    <section class="panel panel--news" aria-labelledby="news-heading">
+      <div class="panel__head">
+        <h2 class="panel__title" id="news-heading">News</h2>
+        <span class="panel__note" id="news-note"></span>
+      </div>
 
-    <nav class="chips" id="categories" aria-label="News categories"></nav>
+      <nav class="chips" id="categories" aria-label="News categories"></nav>
 
-    <ol class="stories" id="news">
-      <li class="empty">Loading headlines…</li>
-    </ol>
-  </section>
+      <ol class="stories" id="news">
+        <li class="empty">Loading headlines…</li>
+      </ol>
+    </section>
 
+  </div>
 </main>
 
 <footer class="colophon">
   <p>Headlines and prices come from CNBC's public feeds. Not affiliated with or endorsed by CNBC. Prices may be delayed — do not trade on them.</p>
 </footer>
 
+<!-- ── settings ──────────────────────────────────────────────────── -->
 <dialog id="settings" class="sheet" aria-labelledby="settings-title">
   <div class="sheet__head">
     <h2 class="sheet__title" id="settings-title">Settings</h2>
     <button type="button" id="settings-close" class="sheet__close" aria-label="Close settings">&times;</button>
   </div>
 
-  <div class="field">
-    <label class="field__label" for="stream-source">Live stream</label>
-    <p class="field__help">
-      What to show in the “Watch CNBC live” panel. Paste either a web address or
-      the whole <code>&lt;iframe&gt;</code> embed code a site gives you — both
-      work. Leave it empty to go back to CNBC's own YouTube stream. Some sites
-      refuse to be embedded at all; if the panel stays blank after saving, that
-      site is one of them.
-    </p>
-    <textarea id="stream-source" rows="3" spellcheck="false" autocomplete="off"
-              placeholder="https://example.com/stream    or    &lt;iframe src=&quot;https://example.com/stream&quot;&gt;&lt;/iframe&gt;"></textarea>
-    <p class="field__msg" id="stream-msg" role="status"></p>
+  <div class="sheet__body">
+
+    <section class="group">
+      <h3 class="group__title">Personal</h3>
+      <div class="field">
+        <label class="field__label" for="name-input">Your name</label>
+        <p class="field__help">Shown in the welcome message at the top of the dashboard.</p>
+        <input id="name-input" type="text" maxlength="32" autocomplete="off" placeholder="Dad">
+      </div>
+    </section>
+
+    <section class="group">
+      <h3 class="group__title">Workday</h3>
+      <div class="field">
+        <label class="field__label" for="downtime-input">Downtime</label>
+        <p class="field__help">
+          When your day is meant to wind down. The sun indicator counts toward it,
+          and a reminder appears once when it arrives. Uses this device's clock.
+        </p>
+        <input id="downtime-input" type="time" step="300">
+      </div>
+    </section>
+
+    <section class="group">
+      <h3 class="group__title">CNBC live</h3>
+
+      <div class="field">
+        <label class="field__label" for="stream-source">Stream source</label>
+        <p class="field__help">
+          Paste either a web address or the whole <code>&lt;iframe&gt;</code> embed
+          code a site gives you — both work. Leave it empty to go back to CNBC's own
+          YouTube stream. Some sites refuse to be embedded at all; if the panel stays
+          blank after saving, that site is one of them.
+        </p>
+        <textarea id="stream-source" rows="3" spellcheck="false" autocomplete="off"
+                  placeholder="https://example.com/stream    or    &lt;iframe src=&quot;https://example.com/stream&quot;&gt;&lt;/iframe&gt;"></textarea>
+        <div class="field__row">
+          <button type="button" id="stream-reset" class="btn">Use the default</button>
+          <button type="button" id="crop-open" class="btn">Player crop…</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3 class="group__title">Appearance</h3>
+
+      <div class="field">
+        <span class="field__label" id="theme-label-text">Theme</span>
+        <div class="segmented" role="group" aria-labelledby="theme-label-text">
+          <button type="button" class="segmented__btn" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" class="segmented__btn" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field__label" id="size-label-text">Text size</span>
+        <div class="segmented sizer" role="group" aria-labelledby="size-label-text">
+          <button type="button" class="segmented__btn sizer__btn" data-size="1" aria-pressed="false"><span class="sizer__a sizer__a--sm">A</span><span class="u-sr">Standard</span></button>
+          <button type="button" class="segmented__btn sizer__btn" data-size="2" aria-pressed="false"><span class="sizer__a sizer__a--md">A</span><span class="u-sr">Large</span></button>
+          <button type="button" class="segmented__btn sizer__btn" data-size="3" aria-pressed="false"><span class="sizer__a sizer__a--lg">A</span><span class="u-sr">Largest</span></button>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <div class="sheet__actions">
-    <button type="button" id="stream-reset" class="tool-btn">Use the default</button>
-    <button type="button" id="settings-save" class="tool-btn tool-btn--go">Save</button>
+    <p class="field__msg" id="settings-msg" role="status"></p>
+    <button type="button" id="settings-save" class="btn btn--primary">Save settings</button>
+  </div>
+</dialog>
+
+<!-- ── visual crop editor ────────────────────────────────────────── -->
+<dialog id="crop-editor" class="sheet sheet--wide" aria-labelledby="crop-title">
+  <div class="sheet__head">
+    <h2 class="sheet__title" id="crop-title">Player crop</h2>
+    <button type="button" id="crop-close" class="sheet__close" aria-label="Close crop editor">&times;</button>
+  </div>
+
+  <div class="sheet__body">
+    <p class="field__help crop__intro">
+      Drag the page to move it. Drag the corner and edge handles to resize the
+      window. Everything inside the bright rectangle is what the dashboard player
+      will show.
+    </p>
+
+    <div class="crop__stage" id="crop-stage">
+      <!-- clipped: the page, the drag shield and the dimming mask -->
+      <div class="crop__viewport">
+        <div class="crop__page" id="crop-page">
+          <iframe id="crop-frame" title="Crop preview" tabindex="-1" scrolling="no"></iframe>
+        </div>
+
+        <!-- swallows pointer input so drags never reach the cross-origin iframe -->
+        <div class="crop__shield" id="crop-shield"></div>
+
+        <div class="crop__dim" id="crop-dim"></div>
+      </div>
+
+      <!-- outside the clip, so handles on the very edge stay grabbable -->
+      <div class="crop__rect" id="crop-rect">
+        <span class="crop__badge">Visible player area</span>
+        <span class="crop__handle" data-handle="nw"></span>
+        <span class="crop__handle" data-handle="n"></span>
+        <span class="crop__handle" data-handle="ne"></span>
+        <span class="crop__handle" data-handle="e"></span>
+        <span class="crop__handle" data-handle="se"></span>
+        <span class="crop__handle" data-handle="s"></span>
+        <span class="crop__handle" data-handle="sw"></span>
+        <span class="crop__handle" data-handle="w"></span>
+      </div>
+    </div>
+
+    <div class="crop__controls">
+      <label class="crop__zoom">
+        <span class="field__label">Zoom</span>
+        <input id="crop-zoom" type="range" min="0.4" max="3" step="0.02" value="1">
+        <output id="crop-zoom-out">100%</output>
+      </label>
+    </div>
+  </div>
+
+  <div class="sheet__actions">
+    <p class="field__msg" id="crop-msg" role="status"></p>
+    <button type="button" id="crop-reset" class="btn">Reset</button>
+    <button type="button" id="crop-save" class="btn btn--primary">Save crop</button>
+  </div>
+</dialog>
+
+<!-- ── downtime notice ───────────────────────────────────────────── -->
+<dialog id="downtime-notice" class="sheet sheet--notice" role="alertdialog" aria-labelledby="downtime-title">
+  <h2 class="notice__title" id="downtime-title">Downtime has arrived</h2>
+  <p class="notice__body">You planned to start winding down now.</p>
+  <p class="notice__meta" id="downtime-meta"></p>
+  <div class="notice__actions">
+    <button type="button" id="downtime-change" class="btn">Change downtime</button>
+    <button type="button" id="downtime-continue" class="btn btn--primary">Continue</button>
   </div>
 </dialog>
 

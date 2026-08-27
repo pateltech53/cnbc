@@ -11,13 +11,23 @@ Two ways to run it:
 | **Website** | Static page + two serverless functions, deploys to Vercel | Sharing a link — nothing to install |
 | **`dist/CNBC-App.zip`** | One Python file that runs a local copy | Handing someone a file to keep |
 
+Built for a dedicated iPad: large type by default, touch-sized controls,
+Playfair Display for the editorial voice and Archivo for the numbers.
+
 ## What it shows
 
+- **Welcome, [name]** — set your name under Settings → Personal; it defaults to
+  "Dad" and is remembered on that device.
+- **Day progress** — a sun travelling from the start of the day toward your
+  downtime, with the time remaining. When downtime arrives a notice appears
+  once; dismissing it stamps the date, so it stays gone until tomorrow.
 - A scrolling ticker of the major indices, treasuries, oil, gold and bitcoin.
 - **My stocks** — an editable watchlist, saved in the browser on that device.
   Type a symbol, press Add; press × to remove one.
+- **CNBC live** — an embedded player you can crop visually (see below).
 - **News** — CNBC headlines across 13 categories, newest first.
-- Controls for text size (A / A / A) and light or dark screen.
+- Settings holds theme and text size; the default size is already sized for a
+  tablet at arm's length.
 
 ## Deploy the website to Vercel
 
@@ -116,6 +126,24 @@ or loads. The extracted address still has to be `https://` or `http://` —
 
 Many sites send `X-Frame-Options` or a `frame-ancestors` policy that forbids
 embedding; those show a blank panel however valid the address is.
+
+### Cropping the player
+
+Most live-stream pages wrap the video in a page full of other content. Settings
+→ CNBC live → **Player crop…** opens a visual editor: drag the page to move it,
+drag the eight handles to resize the window, and use the zoom slider. Everything
+outside the bright rectangle is dimmed, and what is inside is exactly what the
+dashboard shows.
+
+This happens entirely in the parent page. The iframe stays an ordinary iframe —
+a viewport clips it, the crop layer is offset, and the iframe is scaled with a
+CSS transform. Nothing reads or touches the cross-origin document, and no
+access control is bypassed. A transparent shield over the preview captures the
+drags so they never reach the embedded page.
+
+The crop is stored under `cnbcdaily.liveCrop` as fractions of a virtual 16:9
+stage — position, size and zoom — so it keeps meaning the same thing whatever
+size the player is drawn at. **Reset** restores the whole page.
 
 The built-in default lives in one constant, `LIVE_CHANNEL_ID` at the top of
 `public/app.js`. YouTube's `live_stream` embed takes a channel id rather than

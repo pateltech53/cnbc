@@ -33,15 +33,38 @@
   var DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'JPM', 'JNJ', 'KO'];
   var SYMBOL_PATTERN = /^[A-Z0-9.\-=@^:&]{1,16}$/;
 
-  var QUOTE_INTERVAL = 30000;   // 30 seconds
-  var NEWS_INTERVAL = 300000;   // 5 minutes
+  var QUOTE_INTERVAL = 30000;    // 30 seconds
+  var NEWS_INTERVAL = 300000;    // 5 minutes
+  var CLOCK_INTERVAL = 20000;    // clock, sun progress and downtime check
+
+  var DEFAULT_NAME = 'Dad';
+  var DEFAULT_DOWNTIME = '18:30';
+  var DAY_START_HOUR = 7;        // the indicator tracks the waking day, not midnight
+
+  /* The embedded page is laid out at a fixed logical size so the crop means
+   * the same thing in the editor and in the dashboard, whatever the screen. */
+  var FRAME_W = 1280;
+  var FRAME_H = 1800;
+  var STAGE_RATIO = 9 / 16;      // editor stage and default player are 16:9
+  var MIN_CROP = 0.12;
+  var MIN_ZOOM = 0.4;
+  var MAX_ZOOM = 3;
+
+  var DEFAULT_CROP = {
+    scale: 1, offsetX: 0, offsetY: 0,
+    cropX: 0, cropY: 0, cropW: 1, cropH: 1
+  };
 
   var STORE = {
     watchlist: 'cnbcdaily.watchlist',
     theme: 'cnbcdaily.theme',
     size: 'cnbcdaily.size',
     category: 'cnbcdaily.category',
-    stream: 'cnbcdaily.stream'
+    stream: 'cnbcdaily.stream',
+    name: 'cnbcdaily.name',
+    downtime: 'cnbcdaily.downtime',
+    downtimeSeen: 'cnbcdaily.downtimeSeen',
+    liveCrop: 'cnbcdaily.liveCrop'
   };
 
   /* ---------------------------------------------------------------- */
@@ -55,6 +78,10 @@
     if (className) node.className = className;
     if (text !== undefined && text !== null) node.textContent = text;
     return node;
+  }
+
+  function clamp(value, low, high) {
+    return Math.min(high, Math.max(low, value));
   }
 
   function readStore(key, fallback) {
@@ -144,10 +171,9 @@
   }
 
   function clockText() {
-    return new Date().toLocaleString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-      hour: 'numeric', minute: '2-digit'
-    });
+    var now = new Date();
+    return now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+      '  ·  ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
   async function getJSON(url) {
@@ -163,6 +189,8 @@
   var state = {
     watchlist: readStore(STORE.watchlist, DEFAULT_WATCHLIST),
     category: readStore(STORE.category, 'top'),
+    crop: DEFAULT_CROP,
+    draftCrop: DEFAULT_CROP,
     lastQuoteOk: null,
     lastNewsOk: null
   };
@@ -172,18 +200,156 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* greeting                                                          */
+  /* ---------------------------------------------------------------- */
+
+  function readName() {
+    var saved = readStore(STORE.name, '');
+    saved = typeof saved === 'string' ? saved.trim() : '';
+    return saved || DEFAULT_NAME;
+  }
+
+  function renderGreeting() {
+    var target = $('greeting-name');
+    if (target) target.textContent = readName();
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* downtime and the day-progress indicator                           */
+  /* ---------------------------------------------------------------- */
+
+  function readDowntime() {
+    var saved = readStore(STORE.downtime, DEFAULT_DOWNTIME);
+    return (typeof saved === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(saved))
+      ? saved
+      : DEFAULT_DOWNTIME;
+  }
+
+  function downtimeMinutes() {
+    var parts = readDowntime().split(':');
+    return Number(parts[0]) * 60 + Number(parts[1]);
+  }
+
+  function formatTimeOfDay(minutes) {
+    var when = new Date();
+    when.setHours(Math.floor(minutes / 60), Math.round(minutes % 60), 0, 0);
+    return when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function formatDuration(minutes) {
+    var total = Math.max(0, Math.round(minutes));
+    var hours = Math.floor(total / 60);
+    var rest = total % 60;
+    if (hours && rest) return hours + 'h ' + rest + 'm';
+    if (hours) return hours + 'h';
+    return rest + 'm';
+  }
+
+  /* The bar runs from the start of the waking day to downtime. A downtime set
+   * earlier than the usual start still gets a sane span rather than dividing
+   * by zero. */
+  function daySpan() {
+    var end = downtimeMinutes();
+    var start = DAY_START_HOUR * 60;
+    if (end <= start) start = Math.max(0, end - 60);
+    return { start: start, end: end };
+  }
+
+  function minutesNow() {
+    var now = new Date();
+    return now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  }
+
+  function updateDayProgress() {
+    var fill = $('sun-fill');
+    var orb = $('sun-orb');
+    if (!fill || !orb) return;
+
+    var span = daySpan();
+    var total = span.end - span.start;
+    var now = minutesNow();
+    var progress = total > 0 ? clamp((now - span.start) / total, 0, 1) : 1;
+
+    fill.style.width = (progress * 100) + '%';
+    orb.style.left = (progress * 100) + '%';
+
+    var track = $('sun-track');
+    if (track) {
+      track.setAttribute('role', 'progressbar');
+      track.setAttribute('aria-valuemin', '0');
+      track.setAttribute('aria-valuemax', '100');
+      track.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+    }
+
+    var remaining = span.end - now;
+    var label;
+    if (now < span.start) label = 'Your day begins at ' + formatTimeOfDay(span.start);
+    else if (remaining <= 0) label = 'Downtime has passed';
+    else label = formatDuration(remaining) + ' until downtime';
+
+    $('sun-remaining').textContent = label;
+    $('sun-target').textContent = 'Downtime ' + formatTimeOfDay(span.end);
+  }
+
+  function todayKey() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+
+  /* Shown once a day at most: the dismissal is stamped with the date, so it
+   * stays gone until tomorrow rather than reappearing on every tick. */
+  function maybeShowDowntimeNotice() {
+    var dialog = $('downtime-notice');
+    if (!dialog || dialog.open || typeof dialog.showModal !== 'function') return;
+    if ($('settings') && $('settings').open) return;      // don't interrupt editing
+    if (minutesNow() < downtimeMinutes()) return;
+    if (readStore(STORE.downtimeSeen, '') === todayKey()) return;
+
+    $('downtime-meta').textContent = 'You set downtime for ' + formatTimeOfDay(downtimeMinutes());
+    dialog.showModal();
+  }
+
+  function dismissDowntimeNotice() {
+    writeStore(STORE.downtimeSeen, todayKey());
+    var dialog = $('downtime-notice');
+    if (dialog && dialog.open) dialog.close();
+  }
+
+  function initDowntimeNotice() {
+    var dialog = $('downtime-notice');
+    if (!dialog) return;
+
+    $('downtime-continue').addEventListener('click', dismissDowntimeNotice);
+
+    $('downtime-change').addEventListener('click', function () {
+      dismissDowntimeNotice();
+      openSettings('downtime-input');
+    });
+
+    // Esc counts as dismissing it for today, so it does not bounce straight back.
+    dialog.addEventListener('cancel', function (event) {
+      event.preventDefault();
+      dismissDowntimeNotice();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
   /* appearance: theme and text size                                   */
   /* ---------------------------------------------------------------- */
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    var button = $('theme-btn');
-    button.setAttribute('aria-pressed', String(theme === 'dark'));
-    $('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+    var buttons = document.querySelectorAll('[data-theme-choice]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute('aria-pressed', String(buttons[i].dataset.themeChoice === theme));
+    }
     writeStore(STORE.theme, theme);
   }
 
-  var SIZES = { 1: '17px', 2: '19.5px', 3: '22px' };
+  // Sized for a tablet at arm's length; step 1 is already comfortable.
+  var SIZES = { 1: '21px', 2: '24px', 3: '27px' };
 
   function applySize(step) {
     var key = SIZES[step] ? step : 1;
@@ -193,6 +359,7 @@
       buttons[i].setAttribute('aria-pressed', String(Number(buttons[i].dataset.size) === Number(key)));
     }
     writeStore(STORE.size, key);
+    applyCropToPlayer();      // the player's box moves with the type scale
   }
 
   function initAppearance() {
@@ -201,14 +368,16 @@
     applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
     applySize(readStore(STORE.size, 1));
 
-    $('theme-btn').addEventListener('click', function () {
-      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-    });
+    var themeButtons = document.querySelectorAll('[data-theme-choice]');
+    for (var i = 0; i < themeButtons.length; i++) {
+      themeButtons[i].addEventListener('click', function (event) {
+        applyTheme(event.currentTarget.dataset.themeChoice);
+      });
+    }
 
-    var buttons = document.querySelectorAll('.sizer__btn');
-    for (var i = 0; i < buttons.length; i++) {
-      buttons[i].addEventListener('click', function (event) {
+    var sizeButtons = document.querySelectorAll('.sizer__btn');
+    for (var j = 0; j < sizeButtons.length; j++) {
+      sizeButtons[j].addEventListener('click', function (event) {
         applySize(Number(event.currentTarget.dataset.size));
       });
     }
@@ -266,8 +435,17 @@
       id.appendChild(el('p', 'quote__name', quote.name || quote.symbol));
       row.appendChild(id);
 
+      // Only plain US equities get a dollar sign; indices, futures and FX
+      // pairs would be wrong with one ("$6,012.18" for the S&P).
+      var isUsdEquity = /^[A-Z][A-Z0-9.\-]{0,9}$/.test(quote.symbol) &&
+        !/^[.@]/.test(quote.symbol) && quote.currency === 'USD';
+
       var figures = el('div', 'quote__figures');
-      figures.appendChild(el('span', 'quote__price', formatPrice(quote.last, quote.symbol)));
+      figures.appendChild(el(
+        'span',
+        'quote__price' + (isUsdEquity ? ' quote__price--usd' : ''),
+        formatPrice(quote.last, quote.symbol)
+      ));
       var move = moveText(quote);
       figures.appendChild(el('span', 'quote__move ' + move.klass, move.text));
 
@@ -450,11 +628,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* start                                                             */
-  /* ---------------------------------------------------------------- */
-
-  /* ---------------------------------------------------------------- */
-  /* live player and its setting                                       */
+  /* live player: source                                               */
   /* ---------------------------------------------------------------- */
 
   function defaultStreamUrl() {
@@ -519,6 +693,10 @@
     return saved.ok ? saved.url : '';
   }
 
+  function activeStreamUrl() {
+    return storedStreamUrl() || (LIVE_CHANNEL_ID ? defaultStreamUrl() : '');
+  }
+
   /* The stream loads only once the page is running, so a slow response from
    * whatever is embedded never holds up the prices and headlines. */
   function initLivePlayer() {
@@ -526,16 +704,281 @@
     if (!frame) return;
 
     var custom = storedStreamUrl();
-    var source = custom || (LIVE_CHANNEL_ID ? defaultStreamUrl() : '');
-    if (!source) return;
+    var source = activeStreamUrl();
+    if (source) frame.src = source;
 
-    frame.src = source;
+    var tag = $('live-note-tag');
+    if (tag) tag.textContent = custom ? 'Custom source' : '';
 
     var note = $('live-note');
-    if (note && custom) {
-      note.textContent = 'Showing the stream set in Settings. If the panel is ' +
-        'blank, that site does not allow being embedded.';
+    if (note) {
+      note.textContent = custom
+        ? 'Showing the stream set in Settings. If the panel is blank, that site does not allow being embedded.'
+        : "The player shows CNBC's stream when the channel is live. If it is blank, " +
+          'CNBC is off air on that channel right now — use a link below.';
     }
+
+    applyCropToPlayer();
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* live player: crop                                                 */
+  /* ---------------------------------------------------------------- */
+
+  function sanitizeCrop(value) {
+    var crop = {
+      scale: DEFAULT_CROP.scale,
+      offsetX: DEFAULT_CROP.offsetX, offsetY: DEFAULT_CROP.offsetY,
+      cropX: DEFAULT_CROP.cropX, cropY: DEFAULT_CROP.cropY,
+      cropW: DEFAULT_CROP.cropW, cropH: DEFAULT_CROP.cropH
+    };
+    if (value && typeof value === 'object') {
+      Object.keys(crop).forEach(function (key) {
+        var num = Number(value[key]);
+        if (isFinite(num)) crop[key] = num;
+      });
+    }
+    crop.scale = clamp(crop.scale, MIN_ZOOM, MAX_ZOOM);
+    crop.cropW = clamp(crop.cropW, MIN_CROP, 1);
+    crop.cropH = clamp(crop.cropH, MIN_CROP, 1);
+    crop.cropX = clamp(crop.cropX, 0, 1 - crop.cropW);
+    crop.cropY = clamp(crop.cropY, 0, 1 - crop.cropH);
+    crop.offsetX = clamp(crop.offsetX, -10, 10);
+    crop.offsetY = clamp(crop.offsetY, -10, 10);
+    return crop;
+  }
+
+  function copyCrop(crop) { return sanitizeCrop(crop); }
+
+  /* Everything is stored as a fraction of a virtual 16:9 stage, so a saved
+   * crop keeps meaning the same thing at any player size. */
+  function applyCropToPlayer() {
+    var player = $('live-player');
+    var cropEl = $('live-crop');
+    var frame = $('live-frame');
+    if (!player || !cropEl || !frame) return;
+
+    var crop = state.crop;
+    var ratio = ((crop.cropW * 16) / (crop.cropH * 9)).toFixed(4);
+    if (player.dataset.ratio !== ratio) {          // guarded: writing this resizes the box
+      player.dataset.ratio = ratio;
+      player.style.aspectRatio = ratio;
+    }
+
+    var viewportWidth = player.clientWidth;
+    if (!viewportWidth) return;
+
+    var stageWidth = viewportWidth / crop.cropW;
+    var stageHeight = stageWidth * STAGE_RATIO;
+
+    frame.style.width = FRAME_W + 'px';
+    frame.style.height = FRAME_H + 'px';
+    frame.style.transform = 'scale(' + ((crop.scale * stageWidth) / FRAME_W) + ')';
+
+    cropEl.style.left = ((crop.offsetX - crop.cropX) * stageWidth) + 'px';
+    cropEl.style.top = ((crop.offsetY - crop.cropY) * stageHeight) + 'px';
+  }
+
+  function renderCropEditor() {
+    var stage = $('crop-stage');
+    var page = $('crop-page');
+    var frame = $('crop-frame');
+    var rect = $('crop-rect');
+    var dim = $('crop-dim');
+    if (!stage || !page || !frame || !rect || !dim) return;
+
+    var crop = state.draftCrop;
+    var stageWidth = stage.clientWidth;
+    if (!stageWidth) return;
+    var stageHeight = stageWidth * STAGE_RATIO;
+
+    frame.style.width = FRAME_W + 'px';
+    frame.style.height = FRAME_H + 'px';
+    frame.style.transform = 'scale(' + ((crop.scale * stageWidth) / FRAME_W) + ')';
+
+    page.style.left = (crop.offsetX * stageWidth) + 'px';
+    page.style.top = (crop.offsetY * stageHeight) + 'px';
+
+    // outline and dimming mask track the same rectangle, in two layers
+    [rect, dim].forEach(function (layer) {
+      layer.style.left = (crop.cropX * 100) + '%';
+      layer.style.top = (crop.cropY * 100) + '%';
+      layer.style.width = (crop.cropW * 100) + '%';
+      layer.style.height = (crop.cropH * 100) + '%';
+    });
+
+    $('crop-zoom').value = String(crop.scale);
+    $('crop-zoom-out').textContent = Math.round(crop.scale * 100) + '%';
+  }
+
+  function initCropEditor() {
+    var dialog = $('crop-editor');
+    var stage = $('crop-stage');
+    if (!dialog || !stage || typeof dialog.showModal !== 'function') return;
+
+    var message = $('crop-msg');
+    function say(text, tone) {
+      message.textContent = text || '';
+      if (tone) message.setAttribute('data-tone', tone);
+      else message.removeAttribute('data-tone');
+    }
+
+    /* One pointer gesture at a time: either panning the page underneath, or
+     * dragging one handle of the crop window. Pointer events cover mouse,
+     * pen and touch with the same code. */
+    var drag = null;
+
+    function stageMetrics() {
+      var width = stage.clientWidth;
+      return { width: width, height: width * STAGE_RATIO };
+    }
+
+    function beginDrag(event, handle) {
+      var size = stageMetrics();
+      if (!size.width) return;
+      drag = {
+        handle: handle,
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        size: size,
+        origin: copyCrop(state.draftCrop)
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+
+    function moveDrag(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      var dx = (event.clientX - drag.startClientX) / drag.size.width;
+      var dy = (event.clientY - drag.startClientY) / drag.size.height;
+      var origin = drag.origin;
+      var crop = state.draftCrop;
+
+      if (drag.handle === 'pan') {
+        crop.offsetX = clamp(origin.offsetX + dx, -10, 10);
+        crop.offsetY = clamp(origin.offsetY + dy, -10, 10);
+      } else {
+        var handle = drag.handle;
+        if (handle.indexOf('w') !== -1) {
+          var left = clamp(origin.cropX + dx, 0, origin.cropX + origin.cropW - MIN_CROP);
+          crop.cropX = left;
+          crop.cropW = origin.cropX + origin.cropW - left;
+        }
+        if (handle.indexOf('e') !== -1) {
+          crop.cropW = clamp(origin.cropW + dx, MIN_CROP, 1 - crop.cropX);
+        }
+        if (handle.indexOf('n') !== -1) {
+          var top = clamp(origin.cropY + dy, 0, origin.cropY + origin.cropH - MIN_CROP);
+          crop.cropY = top;
+          crop.cropH = origin.cropY + origin.cropH - top;
+        }
+        if (handle.indexOf('s') !== -1) {
+          crop.cropH = clamp(origin.cropH + dy, MIN_CROP, 1 - crop.cropY);
+        }
+      }
+
+      renderCropEditor();
+      event.preventDefault();
+    }
+
+    function endDrag(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch (err) { /* already gone */ }
+      drag = null;
+    }
+
+    var shield = $('crop-shield');
+    shield.addEventListener('pointerdown', function (event) { beginDrag(event, 'pan'); });
+    shield.addEventListener('pointermove', moveDrag);
+    shield.addEventListener('pointerup', endDrag);
+    shield.addEventListener('pointercancel', endDrag);
+
+    var handles = stage.querySelectorAll('.crop__handle');
+    for (var i = 0; i < handles.length; i++) {
+      handles[i].addEventListener('pointerdown', function (event) {
+        event.stopPropagation();
+        beginDrag(event, event.currentTarget.dataset.handle);
+      });
+      handles[i].addEventListener('pointermove', moveDrag);
+      handles[i].addEventListener('pointerup', endDrag);
+      handles[i].addEventListener('pointercancel', endDrag);
+    }
+
+    $('crop-zoom').addEventListener('input', function (event) {
+      state.draftCrop.scale = clamp(Number(event.target.value) || 1, MIN_ZOOM, MAX_ZOOM);
+      renderCropEditor();
+    });
+
+    $('crop-save').addEventListener('click', function () {
+      state.crop = copyCrop(state.draftCrop);
+      writeStore(STORE.liveCrop, state.crop);
+      applyCropToPlayer();
+      say('Saved. The dashboard player now shows this area.', 'ok');
+    });
+
+    $('crop-reset').addEventListener('click', function () {
+      state.draftCrop = copyCrop(DEFAULT_CROP);
+      state.crop = copyCrop(DEFAULT_CROP);
+      writeStore(STORE.liveCrop, state.crop);
+      renderCropEditor();
+      applyCropToPlayer();
+      say('Reset to the whole page.');
+    });
+
+    function closeEditor() {
+      $('crop-frame').removeAttribute('src');       // stop the second stream
+      dialog.close();
+      if ($('settings') && $('settings').open) $('crop-open').focus();
+    }
+
+    $('crop-close').addEventListener('click', closeEditor);
+    dialog.addEventListener('cancel', function (event) {
+      event.preventDefault();
+      closeEditor();
+    });
+
+    $('crop-open').addEventListener('click', function () {
+      var source = activeStreamUrl();
+      state.draftCrop = copyCrop(state.crop);
+      say('');
+      dialog.showModal();
+      if (source) $('crop-frame').src = source;
+      // Wait for layout so the stage has a measurable width.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(renderCropEditor);
+      });
+    });
+
+    window.addEventListener('resize', function () {
+      if (dialog.open) renderCropEditor();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* settings                                                          */
+  /* ---------------------------------------------------------------- */
+
+  function openSettings(focusId) {
+    var dialog = $('settings');
+    if (!dialog || typeof dialog.showModal !== 'function' || dialog.open) return;
+
+    $('name-input').value = readStore(STORE.name, '') || '';
+    $('downtime-input').value = readDowntime();
+    $('stream-source').value = storedStreamUrl();
+    settingsSay('');
+
+    dialog.showModal();
+    var target = $(focusId || 'name-input');
+    if (target) target.focus();
+  }
+
+  function settingsSay(text, tone) {
+    var message = $('settings-msg');
+    if (!message) return;
+    message.textContent = text || '';
+    if (tone) message.setAttribute('data-tone', tone);
+    else message.removeAttribute('data-tone');
   }
 
   function initSettings() {
@@ -543,67 +986,78 @@
     var openBtn = $('settings-btn');
     if (!dialog || !openBtn || typeof dialog.showModal !== 'function') return;
 
-    var input = $('stream-source');
-    var message = $('stream-msg');
-
-    function say(text, tone) {
-      message.textContent = text || '';
-      if (tone) message.setAttribute('data-tone', tone);
-      else message.removeAttribute('data-tone');
-    }
-
-    openBtn.addEventListener('click', function () {
-      input.value = storedStreamUrl();
-      say('');
-      dialog.showModal();
-      input.focus();
-    });
+    openBtn.addEventListener('click', function () { openSettings(); });
 
     function close() {
       dialog.close();
       openBtn.focus();
     }
-
     $('settings-close').addEventListener('click', close);
 
     $('settings-save').addEventListener('click', function () {
-      var result = normalizeStreamUrl(input.value);
-      if (!result.ok) {
-        say(result.reason, 'error');
+      // Stream is validated first: a bad address should not silently discard
+      // the rest of the form.
+      var stream = normalizeStreamUrl($('stream-source').value);
+      if (!stream.ok) {
+        settingsSay(stream.reason, 'error');
+        $('stream-source').focus();
         return;
       }
-      writeStore(STORE.stream, result.url);
-      initLivePlayer();
-      if (!result.url) {
-        say('Saved. Back to the default stream.');
-      } else if (result.fromEmbed) {
-        say('Saved. Using the address from that embed code.');
-      } else {
-        say('Saved. The panel now shows your stream.');
+
+      var name = $('name-input').value.trim().slice(0, 32);
+      writeStore(STORE.name, name);
+      renderGreeting();
+
+      var previousDowntime = readDowntime();
+      var downtime = $('downtime-input').value;
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(downtime)) {
+        writeStore(STORE.downtime, downtime);
+        // A changed downtime makes today's notice eligible again.
+        if (downtime !== previousDowntime) writeStore(STORE.downtimeSeen, '');
       }
+      updateDayProgress();
+
+      writeStore(STORE.stream, stream.url);
+      initLivePlayer();
+
+      var note = 'Saved.';
+      if (stream.url && stream.fromEmbed) note = 'Saved. Using the address from that embed code.';
+      else if (!stream.url) note = 'Saved. The player is back on the default stream.';
+      settingsSay(note, 'ok');
     });
 
     $('stream-reset').addEventListener('click', function () {
-      input.value = '';
+      $('stream-source').value = '';
       writeStore(STORE.stream, '');
-      var note = $('live-note');
-      if (note) {
-        note.textContent = "The player shows CNBC's stream when the channel is live. " +
-          'If it is blank, CNBC is off air on that channel right now — use a link below.';
-      }
       initLivePlayer();
-      say('Back to the default stream.');
+      settingsSay('Back to the default stream.');
     });
   }
 
+  /* ---------------------------------------------------------------- */
+  /* start                                                             */
+  /* ---------------------------------------------------------------- */
+
+  function tick() {
+    $('clock').textContent = clockText();
+    updateDayProgress();
+    maybeShowDowntimeNotice();
+  }
+
   function start() {
+    state.crop = sanitizeCrop(readStore(STORE.liveCrop, null));
+    state.draftCrop = copyCrop(state.crop);
+
+    renderGreeting();
     initAppearance();
     initAdder();
     initSettings();
+    initCropEditor();
+    initDowntimeNotice();
     initLivePlayer();
 
-    $('clock').textContent = clockText();
-    setInterval(function () { $('clock').textContent = clockText(); }, 30000);
+    tick();
+    setInterval(tick, CLOCK_INTERVAL);
 
     $('refresh-btn').addEventListener('click', refreshAll);
 
@@ -620,8 +1074,18 @@
     }, NEWS_INTERVAL);
 
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') refreshAll();
+      if (document.visibilityState === 'visible') {
+        tick();
+        refreshAll();
+      }
     });
+
+    // The player's box changes with orientation and the text-size control.
+    if (window.ResizeObserver) {
+      new ResizeObserver(applyCropToPlayer).observe($('live-player'));
+    } else {
+      window.addEventListener('resize', applyCropToPlayer);
+    }
   }
 
   if (document.readyState === 'loading') {
