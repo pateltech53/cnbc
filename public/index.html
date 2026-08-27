@@ -124,14 +124,16 @@
   </div>
 
   <div class="field">
-    <label class="field__label" for="stream-url">Live stream</label>
+    <label class="field__label" for="stream-source">Live stream</label>
     <p class="field__help">
-      The address of a page or video to show in the “Watch CNBC live” panel.
-      Leave it empty to use CNBC's own YouTube stream. Some sites refuse to be
-      embedded — if the panel stays blank after saving, that site is one of them.
+      What to show in the “Watch CNBC live” panel. Paste either a web address or
+      the whole <code>&lt;iframe&gt;</code> embed code a site gives you — both
+      work. Leave it empty to go back to CNBC's own YouTube stream. Some sites
+      refuse to be embedded at all; if the panel stays blank after saving, that
+      site is one of them.
     </p>
-    <input id="stream-url" type="url" inputmode="url" spellcheck="false"
-           autocomplete="off" placeholder="https://">
+    <textarea id="stream-source" rows="3" spellcheck="false" autocomplete="off"
+              placeholder="https://example.com/stream    or    &lt;iframe src=&quot;https://example.com/stream&quot;&gt;&lt;/iframe&gt;"></textarea>
     <p class="field__msg" id="stream-msg" role="status"></p>
   </div>
 

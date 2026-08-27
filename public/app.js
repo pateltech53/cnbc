@@ -462,21 +462,56 @@
       encodeURIComponent(LIVE_CHANNEL_ID);
   }
 
+  /* Sites hand out embed code, not bare addresses, so accept either. Only the
+   * src is taken from a pasted snippet — width, style, sandbox and the rest are
+   * discarded, because the panel controls its own frame. The snippet is never
+   * inserted into the page as markup. */
+  function extractSource(value) {
+    var raw = String(value || '').trim();
+    if (!raw || raw.indexOf('<') === -1) return raw;
+
+    // DOMParser builds an inert document: no browsing context, so nothing in
+    // the pasted markup executes, loads, or is attached to this page.
+    try {
+      var parsed = new DOMParser().parseFromString(raw, 'text/html');
+      var node = parsed.querySelector('[src]');
+      if (node) return (node.getAttribute('src') || '').trim();
+    } catch (err) {
+      /* fall through to the textual match below */
+    }
+
+    var match = raw.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    return match ? (match[1] || match[2] || match[3] || '').trim() : '';
+  }
+
   /* Only http(s) addresses reach the iframe. Anything else — javascript:,
    * data:, a bare word someone typed — is rejected rather than assigned. */
   function normalizeStreamUrl(value) {
     var raw = String(value || '').trim();
-    if (!raw) return { ok: true, url: '' };            // empty means "use the default"
+    if (!raw) return { ok: true, url: '', fromEmbed: false };   // empty means "use the default"
+
+    var candidate = extractSource(raw);
+    var fromEmbed = raw.indexOf('<') !== -1;
+
+    if (!candidate) {
+      return {
+        ok: false,
+        reason: 'No address found in that. Paste a link, or embed code containing src="…".'
+      };
+    }
+    // Embed codes are often protocol-relative: src="//player.example.com/x".
+    if (candidate.slice(0, 2) === '//') candidate = 'https:' + candidate;
+
     var parsed;
     try {
-      parsed = new URL(raw);
+      parsed = new URL(candidate);
     } catch (err) {
       return { ok: false, reason: 'That is not a complete web address. It should start with https://' };
     }
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return { ok: false, reason: 'Only https:// and http:// addresses can be shown here.' };
     }
-    return { ok: true, url: parsed.href };
+    return { ok: true, url: parsed.href, fromEmbed: fromEmbed };
   }
 
   function storedStreamUrl() {
@@ -508,7 +543,7 @@
     var openBtn = $('settings-btn');
     if (!dialog || !openBtn || typeof dialog.showModal !== 'function') return;
 
-    var input = $('stream-url');
+    var input = $('stream-source');
     var message = $('stream-msg');
 
     function say(text, tone) {
@@ -539,7 +574,13 @@
       }
       writeStore(STORE.stream, result.url);
       initLivePlayer();
-      say(result.url ? 'Saved. The panel now shows your stream.' : 'Saved. Back to the default stream.');
+      if (!result.url) {
+        say('Saved. Back to the default stream.');
+      } else if (result.fromEmbed) {
+        say('Saved. Using the address from that embed code.');
+      } else {
+        say('Saved. The panel now shows your stream.');
+      }
     });
 
     $('stream-reset').addEventListener('click', function () {

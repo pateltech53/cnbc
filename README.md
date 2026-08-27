@@ -102,12 +102,20 @@ The sidebar embeds a live player, with links to CNBC's own live TV page and
 its "where to watch" page underneath.
 
 Out of the box it points at CNBC's official YouTube stream. To show something
-else, open **Settings** (the gear in the header) and paste an address into
-**Live stream**. It is saved in the browser on that device, so each person can
-set their own; "Use the default" clears it. Only `https://` and `http://`
-addresses are accepted — anything else is rejected rather than handed to the
-iframe. Many sites send `X-Frame-Options` or a `frame-ancestors` policy that
-forbids embedding; those will show a blank panel however valid the address is.
+else, open **Settings** (the gear in the header) and paste into **Live
+stream** — either a plain address or the whole `<iframe …>` embed code a site
+hands you. It is saved in the browser on that device, so each person can set
+their own; "Use the default" clears it.
+
+Only the `src` is taken out of a pasted snippet; `width`, `style`,
+`allowfullscreen` and everything else are discarded, since the panel sizes its
+own frame. The snippet is parsed with `DOMParser` into an inert document and is
+never inserted into the page as markup, so nothing in a pasted block executes
+or loads. The extracted address still has to be `https://` or `http://` —
+`javascript:` and `data:` are refused.
+
+Many sites send `X-Frame-Options` or a `frame-ancestors` policy that forbids
+embedding; those show a blank panel however valid the address is.
 
 The built-in default lives in one constant, `LIVE_CHANNEL_ID` at the top of
 `public/app.js`. YouTube's `live_stream` embed takes a channel id rather than

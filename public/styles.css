@@ -572,16 +572,27 @@ a { color: inherit; }
   color: var(--ink-soft);
 }
 
-.field input {
+.field input,
+.field textarea {
+  display: block;
   width: 100%;
   min-height: 44px;
-  padding: 0 0.75rem;
+  padding: 0.6rem 0.75rem;
   font-family: var(--font-text);
   font-size: 0.95rem;
+  line-height: 1.4;
   color: var(--ink);
   background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
+}
+.field textarea { resize: vertical; }
+
+.field__help code {
+  font-family: var(--font-data);
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .field__msg {
