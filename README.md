@@ -14,6 +14,23 @@ Two ways to run it:
 Built for a dedicated iPad: large type by default, touch-sized controls,
 Playfair Display for the editorial voice and Archivo for the numbers.
 
+## First run
+
+The first time it opens, a full-screen setup asks for a name and a downtime,
+then drops you into the dashboard. Its background footage scrubs with
+horizontal pointer movement rather than playing, and drifts slowly by itself
+when nothing has moved — a touch screen has no hovering pointer. If the video
+will not load, the gradient behind it stands in and setup carries on unchanged.
+The clip is one constant, `HERO_VIDEO` in `public/app.js`.
+
+Setup is remembered under `cnbcdaily.onboarded`. Clear that key to see it again.
+
+## Clock
+
+The clock icon in the header, or pressing **C**, opens an analogue face with a
+sweeping second hand and a large digital readout, in this device's timezone.
+`C` is ignored while you are typing or while another dialog is open.
+
 ## What it shows
 
 - **Welcome, [name]** — set your name under Settings → Personal; it defaults to

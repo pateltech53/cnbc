@@ -47,8 +47,9 @@
   var FRAME_H = 1800;
   var STAGE_RATIO = 9 / 16;      // editor stage and default player are 16:9
   var MIN_CROP = 0.12;
-  var MIN_ZOOM = 0.4;
-  var MAX_ZOOM = 3;
+  var MIN_ZOOM = 0.25;
+  var MAX_ZOOM = 4;
+  var ZOOM_STEP = 0.1;
 
   var DEFAULT_CROP = {
     scale: 1, offsetX: 0, offsetY: 0,
@@ -64,8 +65,15 @@
     name: 'cnbcdaily.name',
     downtime: 'cnbcdaily.downtime',
     downtimeSeen: 'cnbcdaily.downtimeSeen',
-    liveCrop: 'cnbcdaily.liveCrop'
+    liveCrop: 'cnbcdaily.liveCrop',
+    onboarded: 'cnbcdaily.onboarded'
   };
+
+  /* Background footage for the first-run screen. If it will not load, the
+   * gradient behind it stands in and onboarding carries on unchanged. */
+  var HERO_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260530_042513_df96a13b-6155-4f6e-8b93-c9dee66fba08.mp4';
+  var SCRUB_SENSITIVITY = 0.8;
+  var HERO_LINE = 'Glad you stopped in. Let us get the markets set up the way you like them.';
 
   /* ---------------------------------------------------------------- */
   /* small helpers                                                     */
@@ -304,6 +312,7 @@
     var dialog = $('downtime-notice');
     if (!dialog || dialog.open || typeof dialog.showModal !== 'function') return;
     if ($('settings') && $('settings').open) return;      // don't interrupt editing
+    if ($('onboard')) return;                            // nor first-run setup
     if (minutesNow() < downtimeMinutes()) return;
     if (readStore(STORE.downtimeSeen, '') === todayKey()) return;
 
@@ -823,6 +832,12 @@
       else message.removeAttribute('data-tone');
     }
 
+    function closeEditor() {
+      $('crop-frame').removeAttribute('src');       // stop the second stream
+      dialog.close();
+      if ($('settings') && $('settings').open) $('crop-open').focus();
+    }
+
     /* One pointer gesture at a time: either panning the page underneath, or
      * dragging one handle of the crop window. Pointer events cover mouse,
      * pen and touch with the same code. */
@@ -905,16 +920,29 @@
       handles[i].addEventListener('pointercancel', endDrag);
     }
 
-    $('crop-zoom').addEventListener('input', function (event) {
-      state.draftCrop.scale = clamp(Number(event.target.value) || 1, MIN_ZOOM, MAX_ZOOM);
+    function setZoom(value) {
+      state.draftCrop.scale = clamp(value, MIN_ZOOM, MAX_ZOOM);
       renderCropEditor();
+    }
+
+    $('crop-zoom').addEventListener('input', function (event) {
+      setZoom(Number(event.target.value) || 1);
+    });
+    $('crop-zoom-down').addEventListener('click', function () {
+      setZoom(state.draftCrop.scale - ZOOM_STEP);
+    });
+    $('crop-zoom-up').addEventListener('click', function () {
+      setZoom(state.draftCrop.scale + ZOOM_STEP);
     });
 
     $('crop-save').addEventListener('click', function () {
       state.crop = copyCrop(state.draftCrop);
       writeStore(STORE.liveCrop, state.crop);
       applyCropToPlayer();
-      say('Saved. The dashboard player now shows this area.', 'ok');
+      // Close straight away: the result is behind this dialog, and staying put
+      // made it look as though nothing had happened.
+      closeEditor();
+      settingsSay('Player crop saved.', 'ok');
     });
 
     $('crop-reset').addEventListener('click', function () {
@@ -925,12 +953,6 @@
       applyCropToPlayer();
       say('Reset to the whole page.');
     });
-
-    function closeEditor() {
-      $('crop-frame').removeAttribute('src');       // stop the second stream
-      dialog.close();
-      if ($('settings') && $('settings').open) $('crop-open').focus();
-    }
 
     $('crop-close').addEventListener('click', closeEditor);
     dialog.addEventListener('cancel', function (event) {
@@ -952,6 +974,261 @@
 
     window.addEventListener('resize', function () {
       if (dialog.open) renderCropEditor();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* first-run onboarding                                              */
+  /* ---------------------------------------------------------------- */
+
+  function reduceMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /* The footage scrubs with horizontal pointer movement rather than playing:
+   * seeks are queued one at a time so a fast sweep cannot flood the decoder. */
+  function initHeroVideo() {
+    var video = $('onboard-video');
+    if (!video || !HERO_VIDEO) return function () {};
+
+    var ready = false;
+    var target = 0;
+    var seeking = false;
+    var lastX = null;
+    var lastMove = 0;
+
+    function seek() {
+      if (!ready || seeking) return;
+      if (Math.abs(video.currentTime - target) < 0.02) return;
+      seeking = true;
+      try { video.currentTime = target; } catch (err) { seeking = false; }
+    }
+
+    video.addEventListener('seeked', function () { seeking = false; seek(); });
+
+    video.addEventListener('loadeddata', function () {
+      if (isFinite(video.duration) && video.duration > 0) {
+        ready = true;
+        video.classList.add('is-ready');
+      }
+    });
+
+    video.addEventListener('error', function () {
+      ready = false;
+      video.classList.remove('is-ready');   // the gradient carries the screen
+    });
+
+    function onMove(event) {
+      if (!ready) return;
+      var x = event.clientX;
+      if (lastX !== null) {
+        var delta = (x - lastX) / window.innerWidth;
+        target = clamp(target + delta * SCRUB_SENSITIVITY * video.duration, 0, video.duration);
+        seek();
+      }
+      lastX = x;
+      lastMove = Date.now();
+    }
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+
+    /* A touch screen has no hovering pointer, so with nothing to scrub the
+     * scene drifts by itself instead of sitting frozen on one frame. */
+    var drift = setInterval(function () {
+      if (!ready || document.hidden || reduceMotion()) return;
+      if (Date.now() - lastMove < 1800) return;
+      target = target + 0.08 >= video.duration ? 0 : target + 0.08;
+      seek();
+    }, 110);
+
+    video.src = HERO_VIDEO;
+    try { video.load(); } catch (err) { /* nothing to do */ }
+
+    return function stop() {
+      clearInterval(drift);
+      window.removeEventListener('pointermove', onMove);
+      video.removeAttribute('src');
+      try { video.load(); } catch (err) { /* nothing to do */ }
+    };
+  }
+
+  function typewriter(node, text, speed, startDelay) {
+    node.textContent = '';
+    var caret = el('span', 'onboard__caret');
+    node.appendChild(caret);
+
+    if (reduceMotion()) {
+      caret.remove();
+      node.textContent = text;
+      return function () {};
+    }
+
+    var index = 0;
+    var timer = setTimeout(function tick() {
+      if (index >= text.length) {
+        caret.remove();
+        return;
+      }
+      caret.insertAdjacentText('beforebegin', text.charAt(index));
+      index += 1;
+      timer = setTimeout(tick, speed);
+    }, startDelay);
+
+    return function () { clearTimeout(timer); };
+  }
+
+  function initOnboarding() {
+    var panel = $('onboard');
+    if (!panel) return;
+
+    if (readStore(STORE.onboarded, false) === true) {
+      panel.remove();
+      return;
+    }
+
+    panel.hidden = false;
+    document.body.style.overflow = 'hidden';
+
+    var stopVideo = initHeroVideo();
+    var stopTyping = typewriter($('onboard-type'), HERO_LINE, 38, 600);
+
+    $('onboard-name').value = readStore(STORE.name, '') || '';
+    $('onboard-downtime').value = readDowntime();
+
+    function showPane(step) {
+      var panes = panel.querySelectorAll('.onboard__pane');
+      for (var i = 0; i < panes.length; i++) {
+        panes[i].classList.toggle('is-active', panes[i].dataset.step === String(step));
+      }
+      var field = panel.querySelector('.onboard__pane.is-active .onboard__input');
+      if (field) setTimeout(function () { field.focus(); }, 80);
+    }
+
+    var jumps = panel.querySelectorAll('[data-goto]');
+    for (var j = 0; j < jumps.length; j++) {
+      jumps[j].addEventListener('click', function (event) {
+        showPane(event.currentTarget.dataset.goto);
+      });
+    }
+
+    // Enter on the name field moves on rather than doing nothing.
+    $('onboard-name').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') { event.preventDefault(); showPane(2); }
+    });
+
+    function finish(save) {
+      if (save) {
+        writeStore(STORE.name, $('onboard-name').value.trim().slice(0, 32));
+        var chosen = $('onboard-downtime').value;
+        if (/^([01]\d|2[0-3]):[0-5]\d$/.test(chosen)) {
+          writeStore(STORE.downtime, chosen);
+          // If they set a time that has already gone by, don't greet them with
+          // the wind-down notice the second setup finishes — start tomorrow.
+          var passed = minutesNow() >= (Number(chosen.slice(0, 2)) * 60 + Number(chosen.slice(3)));
+          writeStore(STORE.downtimeSeen, passed ? todayKey() : '');
+        }
+      }
+      writeStore(STORE.onboarded, true);
+      renderGreeting();
+      updateDayProgress();
+
+      stopTyping();
+      stopVideo();
+      document.body.style.overflow = '';
+      panel.classList.add('is-leaving');
+      setTimeout(function () { panel.remove(); }, 460);
+    }
+
+    $('onboard-finish').addEventListener('click', function () { finish(true); });
+    $('onboard-skip').addEventListener('click', function () { finish(false); });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* clock                                                             */
+  /* ---------------------------------------------------------------- */
+
+  function buildClockFace() {
+    var marks = $('clock-marks');
+    if (!marks || marks.childElementCount) return;
+
+    for (var i = 0; i < 60; i++) {
+      var angle = (i * 6 * Math.PI) / 180;
+      if (i % 5 === 0) {
+        var hour = i / 5;
+        var number = el('div', 'clock__num', String(hour === 0 ? 12 : hour));
+        number.style.left = (50 + Math.sin(angle) * 38) + '%';
+        number.style.top = (50 - Math.cos(angle) * 38) + '%';
+        marks.appendChild(number);
+      } else {
+        var tick = el('div', 'clock__tick');
+        tick.style.transform = 'rotate(' + (i * 6) + 'deg)';
+        marks.appendChild(tick);
+      }
+    }
+  }
+
+  function initClock() {
+    var dialog = $('clock-dialog');
+    var button = $('clock-btn');
+    if (!dialog || !button || typeof dialog.showModal !== 'function') return;
+
+    var frame = null;
+
+    function paint() {
+      var now = new Date();
+      var ms = now.getMilliseconds();
+      var seconds = now.getSeconds() + ms / 1000;
+      var minutes = now.getMinutes() + seconds / 60;
+      var hours = (now.getHours() % 12) + minutes / 60;
+
+      $('clock-hour').style.transform = 'rotate(' + (hours * 30) + 'deg)';
+      $('clock-minute').style.transform = 'rotate(' + (minutes * 6) + 'deg)';
+      $('clock-second').style.transform = 'rotate(' + (seconds * 6) + 'deg)';
+
+      $('clock-digital').textContent = now.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', second: '2-digit'
+      });
+      $('clock-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      var zone = '';
+      try {
+        zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      } catch (err) { /* older engines */ }
+      $('clock-zone').textContent = zone ? zone.split('/').pop().replace(/_/g, ' ') : 'Local';
+
+      frame = requestAnimationFrame(paint);
+    }
+
+    function open() {
+      buildClockFace();
+      dialog.showModal();
+      if (frame === null) paint();
+    }
+
+    function close() {
+      if (frame !== null) { cancelAnimationFrame(frame); frame = null; }
+      dialog.close();
+      button.focus();
+    }
+
+    button.addEventListener('click', function () {
+      if (dialog.open) close(); else open();
+    });
+    $('clock-close').addEventListener('click', close);
+    dialog.addEventListener('cancel', function (event) {
+      event.preventDefault();
+      close();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'c' && event.key !== 'C') return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      var node = document.activeElement;
+      if (node && /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)) return;
+      if ($('onboard')) return;                       // not during first run
+      if ($('settings').open || $('crop-editor').open) return;
+      event.preventDefault();
+      if (dialog.open) close(); else open();
     });
   }
 
@@ -1049,6 +1326,8 @@
     state.draftCrop = copyCrop(state.crop);
 
     renderGreeting();
+    initOnboarding();
+    initClock();
     initAppearance();
     initAdder();
     initSettings();

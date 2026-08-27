@@ -29,6 +29,12 @@
   <div class="masthead__tools">
     <p class="masthead__status" id="status">Loading</p>
     <button type="button" id="refresh-btn" class="btn btn--primary">Refresh</button>
+    <button type="button" id="clock-btn" class="btn btn--icon" title="Clock (C)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>
+      </svg>
+      <span class="u-sr">Clock</span>
+    </button>
     <button type="button" id="settings-btn" class="btn btn--icon" title="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <circle cx="12" cy="12" r="3"/>
@@ -268,7 +274,9 @@
     <div class="crop__controls">
       <label class="crop__zoom">
         <span class="field__label">Zoom</span>
-        <input id="crop-zoom" type="range" min="0.4" max="3" step="0.02" value="1">
+        <button type="button" class="crop__step" id="crop-zoom-down" aria-label="Zoom out">&minus;</button>
+        <input id="crop-zoom" type="range" min="0.25" max="4" step="0.01" value="1">
+        <button type="button" class="crop__step" id="crop-zoom-up" aria-label="Zoom in">+</button>
         <output id="crop-zoom-out">100%</output>
       </label>
     </div>
@@ -289,6 +297,72 @@
   <div class="notice__actions">
     <button type="button" id="downtime-change" class="btn">Change downtime</button>
     <button type="button" id="downtime-continue" class="btn btn--primary">Continue</button>
+  </div>
+</dialog>
+
+<!-- ── first-run onboarding ──────────────────────────────────────── -->
+<div class="onboard" id="onboard" hidden>
+  <video class="onboard__video" id="onboard-video" muted playsinline preload="auto" aria-hidden="true"></video>
+  <div class="onboard__veil" aria-hidden="true"></div>
+
+  <header class="onboard__bar">
+    <span class="onboard__logo">CNBC <em>Daily</em></span>
+    <span class="onboard__hint" id="onboard-hint">Sweep across the screen</span>
+  </header>
+
+  <div class="onboard__stage" role="dialog" aria-modal="true" aria-labelledby="onboard-type">
+    <p class="onboard__whisper" aria-hidden="true">Markets, headlines and the day ahead.<br>Two questions and it is yours.</p>
+    <p class="onboard__type" id="onboard-type"></p>
+
+    <div class="onboard__panes">
+      <section class="onboard__pane is-active" data-step="1">
+        <label class="onboard__label" for="onboard-name">What should it call you?</label>
+        <input class="onboard__input" id="onboard-name" type="text" maxlength="32"
+               placeholder="Dad" autocomplete="off" spellcheck="false">
+        <div class="onboard__actions">
+          <button type="button" class="pill pill--go" data-goto="2">Continue</button>
+        </div>
+      </section>
+
+      <section class="onboard__pane" data-step="2">
+        <label class="onboard__label" for="onboard-downtime">When does the day wind down?</label>
+        <input class="onboard__input onboard__input--time" id="onboard-downtime" type="time" step="300" value="18:30">
+        <div class="onboard__actions">
+          <button type="button" class="pill" data-goto="1">Back</button>
+          <button type="button" class="pill pill--go" id="onboard-finish">Open my dashboard</button>
+        </div>
+      </section>
+    </div>
+
+    <button type="button" class="onboard__skip" id="onboard-skip">Skip for now</button>
+  </div>
+</div>
+
+<!-- ── clock ─────────────────────────────────────────────────────── -->
+<dialog id="clock-dialog" class="sheet sheet--clock" aria-labelledby="clock-title">
+  <div class="sheet__head">
+    <h2 class="sheet__title" id="clock-title">Clock</h2>
+    <button type="button" id="clock-close" class="sheet__close" aria-label="Close clock">&times;</button>
+  </div>
+
+  <div class="clockbox">
+    <div class="clock" id="clock-face">
+      <div class="clock__glow" aria-hidden="true"></div>
+      <div class="clock__marks" id="clock-marks" aria-hidden="true"></div>
+      <div class="clock__hand clock__hand--hour" id="clock-hour" aria-hidden="true"></div>
+      <div class="clock__hand clock__hand--minute" id="clock-minute" aria-hidden="true"></div>
+      <div class="clock__second" id="clock-second" aria-hidden="true">
+        <span class="clock__second-tail"></span>
+        <span class="clock__second-tip"></span>
+      </div>
+      <div class="clock__cap" aria-hidden="true"></div>
+      <div class="clock__gloss" aria-hidden="true"></div>
+      <div class="clock__date" id="clock-date"></div>
+      <div class="clock__zone" id="clock-zone"></div>
+    </div>
+
+    <p class="clockbox__digital" id="clock-digital">&nbsp;</p>
+    <p class="clockbox__hint">Press <kbd>C</kbd> to open or close this.</p>
   </div>
 </dialog>
 
