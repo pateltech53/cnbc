@@ -84,9 +84,14 @@ provider does not blank the page.
 npm run check
 ```
 
-Tests the quote service and all 13 feeds and prints what each one returned. If
-one feed fails, only that tab is affected. If everything fails, it is network
-access rather than the app.
+Tests the quote service and all 13 feeds and prints what each returned,
+including how old each feed's newest story is. A feed that answers but has not
+been published to in days is the failure mode to watch for — the tab fills with
+months-old stories rather than showing an error.
+
+**Known:** as of the last check, `markets` (id `20409666`) is stale — CNBC
+answers on it but its newest story was weeks old, while `top` was minutes old.
+Run the check to see the current state.
 
 The feed IDs live in `api/_lib/cnbc.js` (`FEEDS`) and are mirrored in
 `standalone/server_template.py`. Change one, change both, then rebuild.

@@ -54,21 +54,53 @@ try {
   report('equity quotes', false, error.message);
 }
 
+/* A feed that answers but has not been published to in weeks is broken in the
+ * way that matters: the tab fills with months-old stories. Age is the check. */
+const STALE_AFTER_DAYS = 4;
+
+function newestAgeDays(items) {
+  const times = items
+    .map((i) => (i.published ? new Date(i.published).getTime() : NaN))
+    .filter((t) => Number.isFinite(t));
+  if (!times.length) return null;
+  return (Date.now() - Math.max(...times)) / 86400000;
+}
+
+function describeAge(days) {
+  if (days === null) return 'no dates';
+  if (days < 1) return `${Math.max(1, Math.round(days * 24))}h old`;
+  return `${Math.round(days)}d old`;
+}
+
 console.log('\nCNBC RSS feeds');
+const stale = [];
 for (const slug of Object.keys(FEEDS)) {
   try {
     const { items, warnings } = await getNews(slug, 5);
     const usedFallback = warnings.some((w) => w.includes('showing Top news'));
+    const age = newestAgeDays(items);
+    const fresh = age !== null && age <= STALE_AFTER_DAYS;
+    if (items.length && !usedFallback && !fresh) stale.push(slug);
+
     report(
       `${slug} (${FEEDS[slug].id})`,
-      items.length > 0 && !usedFallback,
+      items.length > 0 && !usedFallback && fresh,
       items.length
-        ? `${items.length} stories - "${items[0].title.slice(0, 44)}"`
+        ? `${items.length} stories, newest ${describeAge(age)} - "${items[0].title.slice(0, 34)}"`
         : warnings[0] || 'empty',
     );
   } catch (error) {
     report(`${slug} (${FEEDS[slug].id})`, false, error.message);
   }
+}
+
+if (stale.length) {
+  console.log(
+    `\n  ${stale.join(', ')}: CNBC still answers on these ids but has not ` +
+    `published to them in over ${STALE_AFTER_DAYS} days, so the tab shows old\n` +
+    '  stories. Find the current id on cnbc.com/rss and update FEEDS in\n' +
+    '  api/_lib/cnbc.js and standalone/server_template.py.',
+  );
 }
 
 console.log(
