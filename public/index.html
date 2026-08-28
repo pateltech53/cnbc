@@ -124,13 +124,17 @@
         <div class="live__crop" id="live-crop">
           <iframe id="live-frame"
                   title="CNBC live stream"
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                  loading="lazy"></iframe>
+                  allow="accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture"
+                  allowfullscreen></iframe>
         </div>
-        <!-- Blocks scrolling and clicks inside the embedded page so the crop
-             cannot be knocked out of place. Unlock to use the player itself. -->
-        <div class="live__shield" id="live-shield"></div>
+        <!-- Blocks scrolling and stray taps inside the embedded page so the crop
+             cannot be knocked out of place. Tapping it unlocks the player:
+             iOS will not start a video without a real tap reaching the frame,
+             so this must never be a dead surface. -->
+        <button type="button" class="live__shield" id="live-shield"
+                aria-label="Enable the player so you can tap it">
+          <span class="live__shield-hint">Tap to use player</span>
+        </button>
       </div>
 
       <p class="live__note" id="live-note">

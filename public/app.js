@@ -1221,7 +1221,15 @@
     if (!list) return;
 
     if (fresh || !screenState.shown.length) {
-      screenState.shown = shuffled(state.lastNews).slice(0, 3);
+      // Prefer stories that are not on screen already, so a rotation always
+      // looks like something happened. Falls back to the whole list once the
+      // feed is too short to avoid repeats.
+      var showing = screenState.shown.map(function (item) { return item.id; });
+      var unseen = state.lastNews.filter(function (item) {
+        return showing.indexOf(item.id) === -1;
+      });
+      var pool = unseen.length >= 3 ? unseen : state.lastNews;
+      screenState.shown = shuffled(pool).slice(0, 3);
     }
 
     list.textContent = '';
@@ -1461,14 +1469,23 @@
     var lock = $('live-lock');
     if (!player || !lock) return;
 
+    function setLocked(locked) {
+      player.classList.toggle('is-unlocked', !locked);
+      lock.setAttribute('aria-pressed', String(locked));
+      lock.textContent = locked ? 'Locked' : 'Unlocked';
+      lock.setAttribute('title', locked
+        ? 'Taps and scrolls go to the dashboard, not the embedded page.'
+        : 'The embedded page takes taps and scrolls. Lock it to protect the crop.');
+    }
+
     lock.addEventListener('click', function () {
-      var unlocked = player.classList.toggle('is-unlocked');
-      lock.setAttribute('aria-pressed', String(!unlocked));
-      lock.textContent = unlocked ? 'Unlocked' : 'Locked';
-      lock.setAttribute('title', unlocked
-        ? 'The embedded page takes taps and scrolls. Lock it to protect the crop.'
-        : 'Taps and scrolls go to the dashboard, not the embedded page.');
+      setLocked(player.classList.contains('is-unlocked'));
     });
+
+    // Unlocking from the shield itself keeps it to two taps — one to enable,
+    // one to press play — rather than sending anyone up to the header first.
+    var shield = $('live-shield');
+    if (shield) shield.addEventListener('click', function () { setLocked(false); });
 
     function nudgeZoom(by) {
       state.crop = sanitizeCrop({

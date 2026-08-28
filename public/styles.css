@@ -563,7 +563,30 @@ a { color: inherit; }
 
 /* Locked by default: taps and scrolls land on the dashboard rather than the
    embedded page, so the crop cannot be dragged out of frame by accident. */
-.live__shield { position: absolute; inset: 0; background: transparent; }
+.live__shield {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 1rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.live__shield-hint {
+  padding: 0.4rem 0.9rem;
+  font-family: var(--font-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #05090F;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  opacity: 0.85;
+}
 .live__player.is-unlocked .live__shield { display: none; }
 .live__player.is-unlocked { outline: 2px solid var(--sun); outline-offset: 2px; }
 

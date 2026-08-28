@@ -157,9 +157,15 @@ embedding; those show a blank panel however valid the address is.
 
 The player is **locked** by default: taps and scrolls land on the dashboard
 rather than inside the embedded page, so the crop cannot be dragged out of
-frame by accident. Press **Unlocked** in the panel header when you want to use
-the player's own controls. The **−** and **+** beside it zoom without opening
-Settings at all.
+frame by accident. **Tap the player once to unlock it**, then again to press
+play — the header toggle does the same thing.
+
+That first tap matters on an iPad. iOS refuses to start any video without a
+real touch reaching the frame, so a lock that simply swallowed taps made the
+stream unplayable there while it still worked on a desktop, where browsers
+start a muted stream on their own.
+
+The **−** and **+** beside the toggle zoom without opening Settings at all.
 
 ### Cropping the player
 
