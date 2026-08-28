@@ -45,16 +45,21 @@
    * the same thing in the editor and in the dashboard, whatever the screen. */
   var FRAME_W = 1280;
   var FRAME_H = 1800;
-  var STAGE_RATIO = 9 / 16;      // editor stage and default player are 16:9
+  var STAGE_RATIO = 3 / 4;       // editor stage and default player are 4:3
   var MIN_CROP = 0.12;
   var MIN_ZOOM = 0.25;
   var MAX_ZOOM = 4;
   var ZOOM_STEP = 0.1;
 
+  /* The frame is 4:3 rather than 16:9 so roughly half the embedded page shows
+   * instead of its top 40%. Zoom stays at 1.0 by default: below that the page
+   * stops filling the frame width and leaves bars down each side. */
+  var DEFAULT_ZOOM = 1;
   var DEFAULT_CROP = {
-    scale: 1, offsetX: 0, offsetY: 0,
+    scale: DEFAULT_ZOOM, offsetX: 0, offsetY: 0,
     cropX: 0, cropY: 0, cropW: 1, cropH: 1
   };
+  var LIVE_ZOOM_STEP = 0.08;
 
   var STORE = {
     watchlist: 'cnbcdaily.watchlist',
@@ -74,6 +79,9 @@
   var HERO_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260530_042513_df96a13b-6155-4f6e-8b93-c9dee66fba08.mp4';
   var SCRUB_SENSITIVITY = 0.8;
   var HERO_LINE = 'Glad you stopped in. Let us get the markets set up the way you like them.';
+
+  // Printed on the clock dial. One string, change it to anything you like.
+  var CLOCK_BRAND = 'Patek Philippe';
 
   /* ---------------------------------------------------------------- */
   /* small helpers                                                     */
@@ -199,6 +207,9 @@
     category: readStore(STORE.category, 'top'),
     crop: DEFAULT_CROP,
     draftCrop: DEFAULT_CROP,
+    lastTape: [],
+    lastQuotes: [],
+    lastNews: [],
     lastQuoteOk: null,
     lastNewsOk: null
   };
@@ -594,17 +605,20 @@
   async function loadQuotes() {
     try {
       var tape = await getJSON('/api/quotes?set=tape');
-      renderTape(tape.quotes || []);
+      state.lastTape = tape.quotes || [];
+      renderTape(state.lastTape);
     } catch (err) {
       state.lastQuoteOk = false;
     }
 
     try {
       var mine = await getJSON('/api/quotes?symbols=' + encodeURIComponent(state.watchlist.join('|')));
-      renderWatchlist(mine.quotes || []);
+      state.lastQuotes = mine.quotes || [];
+      renderWatchlist(state.lastQuotes);
       var note = (mine.quotes && mine.quotes.length && mine.quotes[0].marketStatus) || '';
       $('watchlist-note').textContent = note;
       state.lastQuoteOk = true;
+      renderScreen();
     } catch (err) {
       state.lastQuoteOk = false;
       $('watchlist-note').textContent = '';
@@ -616,9 +630,12 @@
     try {
       var data = await getJSON('/api/news?category=' + encodeURIComponent(state.category) + '&limit=30');
       if (data.categories) renderCategories(data.categories);
-      renderStories(data.items || []);
+      state.lastNews = data.items || [];
+      state.lastNewsLabel = data.label || '';
+      renderStories(state.lastNews);
       $('news-note').textContent = data.label || '';
       state.lastNewsOk = true;
+      renderScreen();
     } catch (err) {
       state.lastNewsOk = false;
       $('news-note').textContent = '';
@@ -768,7 +785,7 @@
     if (!player || !cropEl || !frame) return;
 
     var crop = state.crop;
-    var ratio = ((crop.cropW * 16) / (crop.cropH * 9)).toFixed(4);
+    var ratio = ((crop.cropW * 4) / (crop.cropH * 3)).toFixed(4);
     if (player.dataset.ratio !== ratio) {          // guarded: writing this resizes the box
       player.dataset.ratio = ratio;
       player.style.aspectRatio = ratio;
@@ -1144,6 +1161,182 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* display screen                                                    */
+  /* ---------------------------------------------------------------- */
+
+  var screenState = { open: false, home: null, rotate: null, shown: [] };
+
+  function screenIsOpen() { return screenState.open; }
+
+  function shuffled(list) {
+    var copy = list.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var swap = copy[i]; copy[i] = copy[j]; copy[j] = swap;
+    }
+    return copy;
+  }
+
+  function renderScreenTape() {
+    var track = $('screen-tape-track');
+    if (!track) return;
+    track.textContent = '';
+    if (!state.lastTape.length) {
+      track.appendChild(el('span', 'tape__loading', 'Market data unavailable right now.'));
+      return;
+    }
+    track.appendChild(buildTapeGroup(state.lastTape, false));
+    track.appendChild(buildTapeGroup(state.lastTape, true));
+  }
+
+  function renderScreenStocks() {
+    var list = $('screen-stocks');
+    if (!list) return;
+    list.textContent = '';
+
+    state.lastQuotes.forEach(function (quote) {
+      var row = el('li', 'screen__stock');
+      row.appendChild(el('span', 'screen__sym', quote.symbol));
+
+      var figures = el('div', 'screen__figs');
+      figures.appendChild(el('span', 'screen__last', formatPrice(quote.last, quote.symbol)));
+
+      // Percentage only: the absolute change wrapped onto a third line in a
+      // column this narrow, and percent is what carries at a glance.
+      var dir = direction(quote);
+      var pct = quote.changePct === null || quote.changePct === undefined
+        ? 'Unchanged'
+        : (dir.glyph ? dir.glyph + ' ' : '') + formatSigned(quote.changePct, 2) + '%';
+      figures.appendChild(el('span', 'screen__chg ' + dir.klass, pct));
+      row.appendChild(figures);
+
+      list.appendChild(row);
+    });
+  }
+
+  /* Three headlines at a time, swapped for three others on a timer, so the
+   * screen keeps moving without anyone touching it. */
+  function renderScreenHeadlines(fresh) {
+    var list = $('screen-news');
+    if (!list) return;
+
+    if (fresh || !screenState.shown.length) {
+      screenState.shown = shuffled(state.lastNews).slice(0, 3);
+    }
+
+    list.textContent = '';
+    $('screen-news-note').textContent = state.lastNewsLabel || '';
+
+    if (!screenState.shown.length) {
+      list.appendChild(el('li', 'screen__story', 'Headlines will appear once they load.'));
+      return;
+    }
+
+    screenState.shown.forEach(function (item) {
+      var story = el('li', 'screen__story');
+      story.appendChild(el('p', 'screen__headline', item.title));
+      var when = timeAgo(item.published);
+      story.appendChild(el('span', 'screen__meta', when || 'CNBC'));
+      list.appendChild(story);
+    });
+  }
+
+  function renderScreenClock() {
+    if (!screenState.open) return;
+    var now = new Date();
+    $('screen-time').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    $('screen-date').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    var span = daySpan();
+    var total = span.end - span.start;
+    var progress = total > 0 ? clamp((minutesNow() - span.start) / total, 0, 1) : 1;
+    $('screen-dayfill').style.width = (progress * 100) + '%';
+    $('screen-dayorb').style.left = (progress * 100) + '%';
+
+    var remaining = span.end - minutesNow();
+    $('screen-remaining').textContent = remaining > 0
+      ? formatDuration(remaining) + ' left'
+      : 'Past downtime';
+  }
+
+  function renderScreen() {
+    if (!screenState.open) return;
+    renderScreenTape();
+    renderScreenStocks();
+    renderScreenHeadlines(false);
+    renderScreenClock();
+  }
+
+  function openScreen() {
+    var panel = $('screen');
+    var player = $('live-player');
+    if (!panel || screenState.open) return;
+
+    // Move the live player rather than building a second one: the stream keeps
+    // playing and the saved crop carries over untouched.
+    screenState.home = { parent: player.parentNode, next: player.nextSibling };
+    $('screen-player').appendChild(player);
+
+    panel.hidden = false;
+    screenState.open = true;
+    document.body.style.overflow = 'hidden';
+
+    renderScreen();
+    renderScreenHeadlines(true);
+    applyCropToPlayer();
+
+    screenState.rotate = setInterval(function () {
+      var stories = $('screen-news').querySelectorAll('.screen__story');
+      for (var i = 0; i < stories.length; i++) stories[i].classList.add('is-out');
+      setTimeout(function () { renderScreenHeadlines(true); }, 340);
+    }, 14000);
+  }
+
+  function closeScreen() {
+    var panel = $('screen');
+    var player = $('live-player');
+    if (!panel || !screenState.open) return;
+
+    if (screenState.rotate) { clearInterval(screenState.rotate); screenState.rotate = null; }
+    if (screenState.home) {
+      screenState.home.parent.insertBefore(player, screenState.home.next);
+      screenState.home = null;
+    }
+
+    panel.hidden = true;
+    screenState.open = false;
+    document.body.style.overflow = '';
+    applyCropToPlayer();
+    $('display-btn').focus();
+  }
+
+  function initScreen() {
+    var button = $('display-btn');
+    if (!button || !$('screen')) return;
+
+    button.addEventListener('click', function () {
+      if (screenState.open) closeScreen(); else openScreen();
+    });
+    $('screen-close').addEventListener('click', closeScreen);
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && screenState.open) {
+        event.preventDefault();
+        closeScreen();
+        return;
+      }
+      if (event.key !== 'd' && event.key !== 'D') return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      var node = document.activeElement;
+      if (node && /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)) return;
+      if ($('onboard')) return;
+      if ($('settings').open || $('crop-editor').open || $('clock-dialog').open) return;
+      event.preventDefault();
+      if (screenState.open) closeScreen(); else openScreen();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
   /* clock                                                             */
   /* ---------------------------------------------------------------- */
 
@@ -1189,6 +1382,7 @@
         hour: 'numeric', minute: '2-digit', second: '2-digit'
       });
       $('clock-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      $('clock-brand').textContent = CLOCK_BRAND;
 
       var zone = '';
       try {
@@ -1227,6 +1421,7 @@
       if (node && /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)) return;
       if ($('onboard')) return;                       // not during first run
       if ($('settings').open || $('crop-editor').open) return;
+      if (screenIsOpen()) return;
       event.preventDefault();
       if (dialog.open) close(); else open();
     });
@@ -1256,6 +1451,38 @@
     message.textContent = text || '';
     if (tone) message.setAttribute('data-tone', tone);
     else message.removeAttribute('data-tone');
+  }
+
+  /* Player controls that live on the dashboard rather than in the editor:
+   * a lock so the embedded page cannot be scrolled by accident, and zoom in
+   * and out without opening Settings at all. */
+  function initLiveControls() {
+    var player = $('live-player');
+    var lock = $('live-lock');
+    if (!player || !lock) return;
+
+    lock.addEventListener('click', function () {
+      var unlocked = player.classList.toggle('is-unlocked');
+      lock.setAttribute('aria-pressed', String(!unlocked));
+      lock.textContent = unlocked ? 'Unlocked' : 'Locked';
+      lock.setAttribute('title', unlocked
+        ? 'The embedded page takes taps and scrolls. Lock it to protect the crop.'
+        : 'Taps and scrolls go to the dashboard, not the embedded page.');
+    });
+
+    function nudgeZoom(by) {
+      state.crop = sanitizeCrop({
+        scale: state.crop.scale + by,
+        offsetX: state.crop.offsetX, offsetY: state.crop.offsetY,
+        cropX: state.crop.cropX, cropY: state.crop.cropY,
+        cropW: state.crop.cropW, cropH: state.crop.cropH
+      });
+      writeStore(STORE.liveCrop, state.crop);
+      applyCropToPlayer();
+    }
+
+    $('live-zoom-out').addEventListener('click', function () { nudgeZoom(-LIVE_ZOOM_STEP); });
+    $('live-zoom-in').addEventListener('click', function () { nudgeZoom(LIVE_ZOOM_STEP); });
   }
 
   function initSettings() {
@@ -1318,6 +1545,7 @@
   function tick() {
     $('clock').textContent = clockText();
     updateDayProgress();
+    renderScreenClock();
     maybeShowDowntimeNotice();
   }
 
@@ -1328,9 +1556,11 @@
     renderGreeting();
     initOnboarding();
     initClock();
+    initScreen();
     initAppearance();
     initAdder();
     initSettings();
+    initLiveControls();
     initCropEditor();
     initDowntimeNotice();
     initLivePlayer();

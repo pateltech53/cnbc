@@ -25,6 +25,17 @@ The clip is one constant, `HERO_VIDEO` in `public/app.js`.
 
 Setup is remembered under `cnbcdaily.onboarded`. Clear that key to see it again.
 
+## Display screen
+
+The screen icon, or pressing **D**, opens a single ambient view to leave
+running beside other work: the market ticker across the top, a clock and the
+sun dial beside it, the watchlist down one side, the live player in the middle
+and three headlines that swap for three others every 14 seconds. **Esc** or
+**D** leaves it.
+
+The live player is *moved* into this view rather than duplicated, so the stream
+keeps playing and the saved crop carries over untouched.
+
 ## Clock
 
 The clock icon in the header, or pressing **C**, opens an analogue face with a
@@ -143,6 +154,12 @@ or loads. The extracted address still has to be `https://` or `http://` —
 
 Many sites send `X-Frame-Options` or a `frame-ancestors` policy that forbids
 embedding; those show a blank panel however valid the address is.
+
+The player is **locked** by default: taps and scrolls land on the dashboard
+rather than inside the embedded page, so the crop cannot be dragged out of
+frame by accident. Press **Unlocked** in the panel header when you want to use
+the player's own controls. The **−** and **+** beside it zoom without opening
+Settings at all.
 
 ### Cropping the player
 

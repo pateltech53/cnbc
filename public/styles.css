@@ -553,13 +553,37 @@ a { color: inherit; }
 .live__player {
   position: relative;
   margin-top: 1.2rem;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: #000;
   border: 1px solid var(--rule);
   border-radius: var(--radius-sm);
 }
 .live__crop { position: absolute; top: 0; left: 0; }
+
+/* Locked by default: taps and scrolls land on the dashboard rather than the
+   embedded page, so the crop cannot be dragged out of frame by accident. */
+.live__shield { position: absolute; inset: 0; background: transparent; }
+.live__player.is-unlocked .live__shield { display: none; }
+.live__player.is-unlocked { outline: 2px solid var(--sun); outline-offset: 2px; }
+
+.live__tools { display: flex; align-items: center; gap: 0.4rem; }
+
+.live__tool {
+  min-width: 44px; height: 44px;
+  padding: 0 0.6rem;
+  display: grid; place-items: center;
+  font-family: var(--font-text);
+  font-size: 1.1rem; font-weight: 600; line-height: 1;
+  color: var(--ink-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.live__tool:hover { color: var(--ink); border-color: var(--ink-faint); }
+.live__tool--wide { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.live__tool--wide[aria-pressed="false"] { color: var(--brand-ink); background: var(--sun); border-color: var(--sun); }
 .live__crop iframe {
   display: block;
   border: 0;
@@ -868,10 +892,10 @@ a { color: inherit; }
    scrolling. On a short window it gets narrower rather than taller. */
 .crop__stage {
   position: relative;
-  width: min(100%, calc((100vh - 400px) * 16 / 9));
+  width: min(100%, calc((100vh - 400px) * 4 / 3));
   min-width: 300px;
   margin: 0 auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   touch-action: none;             /* drags pan the page, not the sheet */
   user-select: none;
 }
@@ -1049,30 +1073,44 @@ a { color: inherit; }
 .onboard__video {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   width: 100%; height: 100%;
   object-fit: cover;
   object-position: 70% center;
   opacity: 0;
   transition: opacity 1.2s ease;
 }
-.onboard__video.is-ready { opacity: 0.55; }
+.onboard__video.is-ready { opacity: 1; }
 
 /* Stands in for the video until it is ready, and permanently if it never
    loads — the onboarding must never be a black screen. */
 .onboard__veil {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 0;
   background:
     radial-gradient(120% 90% at 72% 25%, rgba(10, 61, 124, 0.55), transparent 60%),
     radial-gradient(90% 80% at 12% 85%, rgba(232, 163, 61, 0.28), transparent 62%),
     linear-gradient(160deg, #0B1524 0%, #060C16 100%);
 }
 
+/* Sits over the footage so the copy keeps its contrast whatever frame the
+   scrub lands on. */
+.onboard__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    rgba(4, 8, 16, 0.86) 0%,
+    rgba(4, 8, 16, 0.66) 34%,
+    rgba(4, 8, 16, 0.18) 62%,
+    rgba(4, 8, 16, 0.05) 100%);
+}
+
 .onboard__bar {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1099,7 +1137,7 @@ a { color: inherit; }
 
 .onboard__stage {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1379,7 +1417,19 @@ a { color: inherit; }
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
-.clock__date { top: 30%; }
+.clock__brand {
+  position: absolute;
+  left: 0; right: 0;
+  top: 27%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.clock__date { top: 36%; }
 .clock__zone { top: 65%; }
 
 .clockbox__digital {
@@ -1410,4 +1460,227 @@ a { color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .clock__hand { transition: none; }
+}
+
+/* ---------------------------------------------------------------- */
+/* display screen — a single ambient view to leave running           */
+/* ---------------------------------------------------------------- */
+
+/* Always dark, whatever the dashboard theme: this one sits in the corner of
+   someone's eye for hours, so it is tuned for glanceability, not for reading. */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: #05090F;
+  color: #F4F7FC;
+  animation: screen-in 0.35s ease both;
+}
+.screen[hidden] { display: none; }
+
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+
+.screen__tape {
+  overflow: hidden;
+  border-bottom: 1px solid #17202F;
+  background: #0A111C;
+}
+.screen__tape-track {
+  display: flex;
+  width: max-content;
+  animation: tape-scroll 90s linear infinite;
+}
+
+.screen__head {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding: 0.9rem clamp(1rem, 2.5vw, 2rem);
+  border-bottom: 1px solid #17202F;
+}
+
+.screen__now { display: flex; align-items: baseline; gap: 0.8rem; flex: none; }
+.screen__time {
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.screen__date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #7D8CA8;
+}
+
+.screen__day { display: flex; align-items: center; gap: 0.85rem; flex: 1 1 auto; min-width: 0; }
+.screen__daysun { flex: none; line-height: 0; color: var(--sun); }
+.screen__daysun svg {
+  width: 22px; height: 22px;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round;
+}
+.screen__daysun circle { fill: currentColor; stroke: none; }
+
+.screen__daytrack {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 6px;
+  background: #17202F;
+  border-radius: 999px;
+}
+.screen__dayfill {
+  position: absolute; inset: 0 auto 0 0; width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7A5A24, var(--sun));
+  transition: width 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.screen__dayorb {
+  position: absolute; top: 50%; left: 0;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 32%, #FFF3DC, var(--sun) 70%);
+  box-shadow: 0 0 0 4px rgba(245, 185, 83, 0.18);
+  transition: left 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.screen__dayread {
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #97A6C2;
+  font-variant-numeric: tabular-nums;
+}
+
+.screen__close {
+  flex: none;
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  font-size: 1.7rem; line-height: 1;
+  color: #7D8CA8;
+  background: transparent;
+  border: 1px solid #17202F;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.screen__close:hover { color: #F4F7FC; border-color: #33415C; }
+
+.screen__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 24fr) minmax(0, 40fr) minmax(0, 36fr);
+  gap: 1px;
+  min-height: 0;
+  background: #17202F;
+}
+@media (max-width: 900px) {
+  .screen__grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, auto); overflow-y: auto; }
+}
+
+.screen__col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(0.9rem, 2vw, 1.5rem);
+  background: #05090F;
+}
+
+.screen__title {
+  flex: none;
+  margin-bottom: 0.9rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6E7C96;
+}
+.screen__title-note { margin-left: 0.5rem; letter-spacing: 0.1em; color: #4C596F; }
+
+/* watchlist */
+.screen__stocks {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+.screen__stock {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.62rem 0;
+  border-bottom: 1px solid #131C2B;
+}
+.screen__stock:last-child { border-bottom: 0; }
+.screen__sym {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 700;
+}
+.screen__figs { text-align: right; font-variant-numeric: tabular-nums; }
+.screen__last { display: block; font-size: 1.06rem; font-weight: 600; line-height: 1.2; }
+.screen__chg { display: block; font-size: 0.8rem; font-weight: 600; }
+
+/* live */
+.screen__col--live { align-items: stretch; }
+.screen__player {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.screen__player .live__player { width: 100%; margin-top: 0; }
+
+/* headlines */
+.screen__news {
+  flex: 1 1 auto;
+  min-height: 0;
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1rem, 3vh, 2rem);
+}
+.screen__story { animation: story-in 0.6s ease both; }
+.screen__story:nth-child(2) { animation-delay: 0.09s; }
+.screen__story:nth-child(3) { animation-delay: 0.18s; }
+@keyframes story-in {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+.screen__story.is-out { animation: story-out 0.35s ease both; }
+@keyframes story-out { to { opacity: 0; transform: translateY(-7px); } }
+
+.screen__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.12rem, 1.9vw, 1.55rem);
+  font-weight: 500;
+  line-height: 1.3;
+  color: #F4F7FC;
+}
+.screen__meta {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6E7C96;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen, .screen__story, .screen__story.is-out { animation: none; opacity: 1; transform: none; }
+  .screen__tape-track { animation: none; }
+  .screen__dayfill, .screen__dayorb { transition: none; }
 }

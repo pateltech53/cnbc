@@ -29,6 +29,12 @@
   <div class="masthead__tools">
     <p class="masthead__status" id="status">Loading</p>
     <button type="button" id="refresh-btn" class="btn btn--primary">Refresh</button>
+    <button type="button" id="display-btn" class="btn btn--icon" title="Display screen (D)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 17.5v3"/>
+      </svg>
+      <span class="u-sr">Display screen</span>
+    </button>
     <button type="button" id="clock-btn" class="btn btn--icon" title="Clock (C)">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>
@@ -104,7 +110,12 @@
     <section class="panel panel--live" aria-labelledby="live-heading">
       <div class="panel__head">
         <h2 class="panel__title" id="live-heading">CNBC live</h2>
-        <span class="panel__note" id="live-note-tag"></span>
+        <div class="live__tools">
+          <span class="panel__note" id="live-note-tag"></span>
+          <button type="button" class="live__tool" id="live-zoom-out" aria-label="Show more of the page">&minus;</button>
+          <button type="button" class="live__tool" id="live-zoom-in" aria-label="Show less of the page">+</button>
+          <button type="button" class="live__tool live__tool--wide" id="live-lock" aria-pressed="true">Locked</button>
+        </div>
       </div>
 
       <!-- viewport → crop layer → iframe. The crop layer is positioned and the
@@ -117,6 +128,9 @@
                   allowfullscreen
                   loading="lazy"></iframe>
         </div>
+        <!-- Blocks scrolling and clicks inside the embedded page so the crop
+             cannot be knocked out of place. Unlock to use the player itself. -->
+        <div class="live__shield" id="live-shield"></div>
       </div>
 
       <p class="live__note" id="live-note">
@@ -304,6 +318,7 @@
 <div class="onboard" id="onboard" hidden>
   <video class="onboard__video" id="onboard-video" muted playsinline preload="auto" aria-hidden="true"></video>
   <div class="onboard__veil" aria-hidden="true"></div>
+  <div class="onboard__scrim" aria-hidden="true"></div>
 
   <header class="onboard__bar">
     <span class="onboard__logo">CNBC <em>Daily</em></span>
@@ -338,6 +353,48 @@
   </div>
 </div>
 
+<!-- ── display screen: the ambient one-screen view ───────────────── -->
+<div class="screen" id="screen" hidden>
+  <div class="screen__tape"><div class="screen__tape-track" id="screen-tape-track"></div></div>
+
+  <header class="screen__head">
+    <div class="screen__now">
+      <span class="screen__time" id="screen-time">&nbsp;</span>
+      <span class="screen__date" id="screen-date"></span>
+    </div>
+
+    <div class="screen__day">
+      <span class="screen__daysun" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.6"/><path d="M12 2.4v2.6M12 19v2.6M2.4 12h2.6M19 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg>
+      </span>
+      <div class="screen__daytrack">
+        <div class="screen__dayfill" id="screen-dayfill"></div>
+        <div class="screen__dayorb" id="screen-dayorb"></div>
+      </div>
+      <span class="screen__dayread" id="screen-remaining"></span>
+    </div>
+
+    <button type="button" class="screen__close" id="screen-close" aria-label="Leave display screen">&times;</button>
+  </header>
+
+  <main class="screen__grid">
+    <section class="screen__col">
+      <h2 class="screen__title">Watchlist</h2>
+      <ul class="screen__stocks" id="screen-stocks"></ul>
+    </section>
+
+    <section class="screen__col screen__col--live">
+      <h2 class="screen__title">CNBC live</h2>
+      <div class="screen__player" id="screen-player"></div>
+    </section>
+
+    <section class="screen__col">
+      <h2 class="screen__title">Headlines <span class="screen__title-note" id="screen-news-note"></span></h2>
+      <ol class="screen__news" id="screen-news"></ol>
+    </section>
+  </main>
+</div>
+
 <!-- ── clock ─────────────────────────────────────────────────────── -->
 <dialog id="clock-dialog" class="sheet sheet--clock" aria-labelledby="clock-title">
   <div class="sheet__head">
@@ -355,6 +412,7 @@
         <span class="clock__second-tail"></span>
         <span class="clock__second-tip"></span>
       </div>
+      <div class="clock__brand" id="clock-brand"></div>
       <div class="clock__cap" aria-hidden="true"></div>
       <div class="clock__gloss" aria-hidden="true"></div>
       <div class="clock__date" id="clock-date"></div>
