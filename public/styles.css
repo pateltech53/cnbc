@@ -605,6 +605,7 @@ a { color: inherit; }
   cursor: pointer;
 }
 .live__tool:hover { color: var(--ink); border-color: var(--ink-faint); }
+.live__tool:disabled { opacity: 0.35; cursor: default; }
 .live__tool--wide { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .live__tool--wide[aria-pressed="false"] { color: var(--brand-ink); background: var(--sun); border-color: var(--sun); }
 .live__crop iframe {

@@ -167,6 +167,25 @@ start a muted stream on their own.
 
 The **−** and **+** beside the toggle zoom without opening Settings at all.
 
+### Fit and Crop
+
+The panel header carries a **Fit / Crop** toggle, and **Fit is the default**.
+
+Fit puts no CSS transform anywhere near the iframe: the frame is sized to the
+box and the embedded page lays itself out inside it. This matters on iOS.
+Safari mis-delivers touches into a cross-origin iframe that sits under a CSS
+transform, so the embedded player's own play button never registers the tap —
+the stream stays black and keeps asking to be started, while the same page
+plays fine in a desktop browser (which hit-tests transformed frames correctly)
+and in a normal iPad tab (no iframe at all).
+
+Crop reinstates the transform and your saved framing. Use it on a desktop; if a
+stream will not start on the tablet, switch back to Fit. The zoom buttons only
+apply in Crop mode, since Fit does no scaling by definition.
+
+"Open this stream in a new tab" under the player is the guaranteed path: the
+site's own page, top level, no iframe involved.
+
 ### Cropping the player
 
 Most live-stream pages wrap the video in a page full of other content. Settings

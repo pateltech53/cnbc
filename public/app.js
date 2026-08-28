@@ -71,6 +71,7 @@
     downtime: 'cnbcdaily.downtime',
     downtimeSeen: 'cnbcdaily.downtimeSeen',
     liveCrop: 'cnbcdaily.liveCrop',
+    liveFit: 'cnbcdaily.liveFit',
     onboarded: 'cnbcdaily.onboarded'
   };
 
@@ -736,6 +737,10 @@
     var tag = $('live-note-tag');
     if (tag) tag.textContent = custom ? 'Custom source' : '';
 
+    // A guaranteed path: the stream's own page, top level, no iframe at all.
+    var open = $('live-open');
+    if (open && source) open.href = source;
+
     var note = $('live-note');
     if (note) {
       note.textContent = custom
@@ -778,12 +783,34 @@
 
   /* Everything is stored as a fraction of a virtual 16:9 stage, so a saved
    * crop keeps meaning the same thing at any player size. */
+  function liveMode() {
+    return readStore(STORE.liveFit, 'fit') === 'crop' ? 'crop' : 'fit';
+  }
+
   function applyCropToPlayer() {
     var player = $('live-player');
     var cropEl = $('live-crop');
     var frame = $('live-frame');
     if (!player || !cropEl || !frame) return;
 
+    /* Fit mode puts no CSS transform anywhere near the iframe. iOS Safari
+     * mis-delivers touches into a cross-origin iframe that sits under a
+     * transform: the embedded player's own play button never registers the
+     * tap, so the stream shows black and keeps asking to be started. Desktop
+     * browsers hit-test transformed frames correctly, which is why the same
+     * page plays there. Crop mode reinstates the transform for anyone who
+     * wants the framing and is not on an iPad. */
+    if (liveMode() === 'fit') {
+      player.dataset.ratio = 'fit';
+      player.style.aspectRatio = '4 / 3';
+      cropEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%';
+      frame.style.width = '100%';
+      frame.style.height = '100%';
+      frame.style.transform = 'none';
+      return;
+    }
+
+    cropEl.style.cssText = 'position:absolute;top:0;left:0';
     var crop = state.crop;
     var ratio = ((crop.cropW * 4) / (crop.cropH * 3)).toFixed(4);
     if (player.dataset.ratio !== ratio) {          // guarded: writing this resizes the box
@@ -1500,6 +1527,24 @@
 
     $('live-zoom-out').addEventListener('click', function () { nudgeZoom(-LIVE_ZOOM_STEP); });
     $('live-zoom-in').addEventListener('click', function () { nudgeZoom(LIVE_ZOOM_STEP); });
+
+    var fit = $('live-fit');
+    function paintFit() {
+      var mode = liveMode();
+      fit.textContent = mode === 'fit' ? 'Fit' : 'Crop';
+      fit.setAttribute('aria-pressed', String(mode === 'fit'));
+      fit.setAttribute('title', mode === 'fit'
+        ? 'The page fills the frame untouched. Switch to Crop to use your saved framing.'
+        : 'Using your saved crop. Switch to Fit if the stream will not start on a tablet.');
+      $('live-zoom-out').disabled = mode === 'fit';
+      $('live-zoom-in').disabled = mode === 'fit';
+    }
+    fit.addEventListener('click', function () {
+      writeStore(STORE.liveFit, liveMode() === 'fit' ? 'crop' : 'fit');
+      paintFit();
+      applyCropToPlayer();
+    });
+    paintFit();
   }
 
   function initSettings() {
